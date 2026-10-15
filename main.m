@@ -2,15 +2,12 @@
 %  Control of Coupled Rotational-Translational Spacecraft Relative Motion",
 %  ACC 2019 (MERL TR2019-064).
 %
-%  Requires CasADi (with IPOPT) unzipped into external/casadi, e.g.
-%  https://github.com/casadi/casadi/releases (casadi-*-osx-arm64-matlab2018b.zip).
+%  CasADi (with IPOPT) is fetched into external/casadi by setupCasadi.
 
 projectRoot = fileparts(mfilename('fullpath'));
+addpath(projectRoot);
 addpath(genpath(fullfile(projectRoot, 'src')));
-addpath(fullfile(projectRoot, 'external', 'casadi'));
-if ~exist('casadi.Opti', 'class')
-    error('CasADi not found. Unzip the MATLAB release into external/casadi.');
-end
+setupCasadi();
 
 p = paperParameters();
 ctrl = buildNmpc(p);
