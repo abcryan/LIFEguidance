@@ -15,7 +15,7 @@ IPOPT is downloaded into `external/` (git-ignored) by `setupCasadi.m`.
 
 ```matlab
 main                 % solve, validate, save results/ and figures (~45 s)
-makeVideo            % render the two videos from the saved run (~3 min)
+makeVideo            % render the two videos from the saved run (~1 min)
 runtests('tests')    % model consistency checks (~5 s)
 ```
 
@@ -69,16 +69,16 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
 
 ## Outputs (`results/`)
 
-- **Figures** (written by `main`)
+- **Figures** (written by `main` and left open in MATLAB; saved as PNG)
   - `tracking_errors.png`: θ, ω, r, ṙ, with tolerance bands and magnified arrival views.
   - `control_wrench.png`: body-frame force and torque.
   - Thrust: `thrust_histories.png` (per pod), `thrust_burn_zoom.png`, `thrust_heatmap.png`.
   - `impulse.png`: cumulative impulse and per-thruster impulse.
   - `propagation_discrepancy.png`.
   - Static trajectories: `trajectory_formation.png`, `trajectory_SER.png`.
-- **Videos** (written by `makeVideo`)
-  - `video_SER.mp4` and `video_formation.mp4` share one event-aware frame schedule.
-  - 960×540 at 15 fps, about 26 s each. Coasts play at ×1200; each burn plays in slow motion for at least 1 s, with a short pause at each burn start.
+- **Videos** (written by `makeVideo`, drawn live in a MATLAB figure; off-screen in `-batch` mode)
+  - `video_SER.mp4` and `video_formation.mp4` share the same frame times.
+  - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The thruster panel and plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
   - Every frame shows the time, the playback rate, a 20-thruster activity panel and a burn timeline.
   - Plumes point opposite to the force, scaled with T/T_max. The spacecraft is drawn ×3.
 - **Data**

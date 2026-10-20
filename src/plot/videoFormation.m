@@ -6,7 +6,7 @@ mag = 3; plumeLen = 4;
 x = res.prop.x;
 rf = x(8:10,:) + p.rfp;                  % r^f_fi
 
-fig = newFigure('videoFormation', [0 0 1280 720]);
+fig = newFigure('videoFormation', [50 50 1280 720]); fig.Resize = 'off';
 pan = videoPanels(fig, res, p, 'Virtual formation frame O^f (rotating with the formation)');
 ax = axes(fig, 'Position', [0.03 0.06 0.62 0.85]); hold(ax, 'on');
 plot3(ax, rf(1,:), rf(2,:), rf(3,:), ':', 'Color', [0.4 0.4 0.4]);
@@ -36,13 +36,13 @@ warnState = warning('off', 'MATLAB:hg:DiceyTransformMatrix');
 restore = onCleanup(@() warning(warnState));
 for f = 1:numel(sched.t)
     t = sched.t(f);
-    [xs, T] = stateAt(res, t);
+    xs = stateAt(res, t);
+    T = thrustInWindow(res, sched.t(max(f - 1, 1)), t);   % peak since last frame
     pos = xs(8:10) + p.rfp;
     setSpacecraftPose(h, quatToDcm(xs(1:4)), pos, T, plumeLen);
     upto = res.prop.t <= t;
     set(trail, 'XData', [rf(1,upto) pos(1)], 'YData', [rf(2,upto) pos(2)], 'ZData', [rf(3,upto) pos(3)]);
-    updatePanels(pan, t, T, sched.label(f), xs, p);
+    updatePanels(pan, t, T, sched.label, xs, p);
     writeVideo(vw, grabFrame(fig));
 end
-close(fig);
 end

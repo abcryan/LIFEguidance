@@ -1,6 +1,7 @@
-function plotResults(res, p, outDir)
-%PLOTRESULTS Static figures of Sec. 4.4 (PNG), physical time throughout.
-figs = {
+function figs = plotResults(res, p, outDir)
+%PLOTRESULTS Static figures of Sec. 4.4, saved as PNG to outDir and left
+%   open (physical time throughout).
+list = {
     'tracking_errors',     @() plotTracking(res, p)
     'control_wrench',      @() plotWrench(res, p)
     'thrust_histories',    @() plotThrusters(res, p)
@@ -11,9 +12,8 @@ figs = {
     'trajectory_formation', @() plotTrajectoryFormation(res, p)
     'trajectory_SER',      @() plotTrajectorySER(res, p)
     };
-for k = 1:size(figs, 1)
-    fig = figs{k, 2}();
-    exportgraphics(fig, fullfile(outDir, [figs{k, 1} '.png']), 'Resolution', 200);
-    close(fig);
+for k = 1:size(list, 1)
+    figs.(list{k, 1}) = list{k, 2}();
+    exportgraphics(figs.(list{k, 1}), fullfile(outDir, [list{k, 1} '.png']), 'Resolution', 200);
 end
 end

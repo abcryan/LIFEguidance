@@ -14,7 +14,7 @@ pan.bar = bar(pan.axT, 1:p.nThr, zeros(1, p.nThr), 'FaceColor', 'flat');
 pan.bar.CData = s.pod(p.thr.pod, :);
 ylim(pan.axT, [0 1]); xlim(pan.axT, [0.4 p.nThr + 0.6]); grid(pan.axT, 'on');
 set(pan.axT, 'XTick', 1:p.nThr, 'XTickLabel', p.thr.label, 'XTickLabelRotation', 90, 'FontSize', 7);
-ylabel(pan.axT, 'T_{ik}/T_{max}'); title(pan.axT, 'Thruster activity (colour = pod)', 'FontSize', 10);
+ylabel(pan.axT, 'T_{ik}/T_{max}'); title(pan.axT, 'Peak thrust since last frame (colour = pod)', 'FontSize', 10);
 
 pan.axL = axes(fig, 'Position', [0.69 0.10 0.29 0.08]);
 hold(pan.axL, 'on');

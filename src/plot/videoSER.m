@@ -11,7 +11,7 @@ for k = 1:nP
     tgtB(:,k) = res.Rbf(:,:,k)*p.rfp;
 end
 
-fig = newFigure('videoSER', [0 0 1280 720]);
+fig = newFigure('videoSER', [50 50 1280 720]); fig.Resize = 'off';
 pan = videoPanels(fig, res, p, ...
     'Sun-Earth rotating frame O^b: halo orbit (left) and formation-centred close-up, SER-parallel axes');
 
@@ -59,7 +59,8 @@ restore = onCleanup(@() warning(warnState));
 L = 0.25*(lim(2) - lim(1));
 for f = 1:numel(sched.t)
     t = sched.t(f);
-    [x, T] = stateAt(res, t);
+    x = stateAt(res, t);
+    T = thrustInWindow(res, sched.t(max(f - 1, 1)), t);   % peak since last frame
     fr = frames(t, p);
     Rfi = quatToDcm(x(1:4));
     pos = fr.Rbf*(x(8:10) + p.rfp);
@@ -75,10 +76,9 @@ for f = 1:numel(sched.t)
     end
     a = rel(interp1(res.prop.t, res.ref(1:3,:)', t)'/p.dse);
     set(mk, 'XData', a(1), 'YData', a(2), 'ZData', a(3));
-    updatePanels(pan, t, T, sched.label(f), x, p);
+    updatePanels(pan, t, T, sched.label, x, p);
     writeVideo(vw, grabFrame(fig));
 end
-close(fig);
 end
 
 function lim = sceneLimits(P, pad)
