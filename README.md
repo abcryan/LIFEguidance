@@ -43,28 +43,34 @@ runtests('tests')    % model consistency checks (~5 s)
   - R_x, R_y, R_z are active rotations. This is the only reading under which eq. (52) gives ω^b_cb = +Ω e₃ and eq. (53) gives R^c_f e₃ = +e₂.
   - Eq. (19) needs the SER-frame velocity difference, which is reconstructed as R^b_f(ṙ^f_pi + ω^f_bf × r^f_fi).
 
-## Results (nominal case, N = 400, `results/summary.json`)
+## Results (nominal case, N = 400, T_max = 3 N, `results/summary.json`)
+
+T_max is set to 3 N in `lifeParameters.m`; the document specifies 10 N.
 
 | Quantity | Value |
 |---|---|
-| Solver | `Solve_Succeeded`, 226 iterations, 20 s (`main` total ~42 s) |
-| Arrival time τ | 14400 s, upper bound t_f active (multiplier 0.52) |
-| Total impulse J | 138.079 N s (Δm = 0.064 kg at I_sp = 220 s) |
-| Max thrust | 1.35 N (T_max = 10 N), bound violation 0 |
-| Terminal ‖r‖ / ‖ṙ‖ | 2.6e-5 m / 1.6e-8 m/s (gates 1e-2 m, 1e-5 m/s) |
-| Terminal angle (eq. 60) / ‖ω‖ | 2.3e-6 rad / 6.8e-11 s⁻¹ (gates 1e-4 rad, 1e-7 s⁻¹) |
-| Absolute-model cross-check | ≤ 8.6e-9 m, 1.5e-12 m/s, 9.4e-14 rad (pass) |
-| max \|‖q‖−1\| | 7.9e-6 collocation, 1.3e-15 propagation |
+| Solver | `Solve_Succeeded`, 184 iterations, 18 s (`main` total ~44 s) |
+| Arrival time τ | 14400 s, upper bound t_f active (multiplier 0.68) |
+| Total impulse J | 138.476 N s (Δm = 0.064 kg at I_sp = 220 s) |
+| Max thrust | 1.52 N (T_max = 3 N, bound not active), bound violation 0 |
+| Terminal ‖r‖ / ‖ṙ‖ | 2.2e-5 m / 1.5e-8 m/s (gates 1e-2 m, 1e-5 m/s) |
+| Terminal angle (eq. 60) / ‖ω‖ | 1.8e-6 rad / 2.2e-10 s⁻¹ (gates 1e-4 rad, 1e-7 s⁻¹) |
+| Absolute-model cross-check | ≤ 7.5e-9 m, 1.7e-12 m/s, 7.5e-14 rad (pass) |
+| max \|‖q‖−1\| | 5.5e-6 collocation, 8.9e-16 propagation |
 
-Choice of N: with N = 200 (the document's initial value), all checks pass
+With T_max = 10 N, the same mesh gave J = 138.079 N s. T_max also sets the
+control scaling and the initial guess (1% of T_max), so IPOPT ends in a
+nearby local optimum.
+
+Choice of N (measured with T_max = 10 N): with N = 200, all checks pass
 except the attitude check (60), which gives θ = 2.3e-4 rad.
 
 ### Known limitations
 
-- **Burns are not resolved.** The optimum is near-impulsive. On a uniform 36 s mesh, each burn is smeared over whole intervals at low thrust (peak 1.35 N), so the burn shapes are mesh artifacts.
+- **Burns are not resolved.** The optimum is near-impulsive. On a uniform 36 s mesh, each burn is smeared over whole intervals at low thrust (peak 1.52 N), so the burn shapes are mesh artifacts.
   - The earlier mesh-refinement version (commit `e963d5e`) resolved them, with saturated 10 N burns lasting a few seconds.
-  - It also reached a lower impulse, J = 131.57 N s at N = 770 nonuniform intervals.
-- **Local optimum only.** Cold starts on different N reach different optima: J = 132.78 at N = 200, 136.80 at N = 300 and 138.08 at N = 400.
+  - It also reached a lower impulse, J = 131.57 N s at N = 770 nonuniform intervals (with T_max = 10 N).
+- **Local optimum only.** With T_max = 10 N, cold starts on different N reach different optima: J = 132.78 at N = 200, 136.80 at N = 300 and 138.08 at N = 400.
 - **IPOPT setting.** `bound_relax_factor = 0` is required. With IPOPT's default, `honor_original_bounds` clips the returned thrusts by ~1e-8·T_max. That leaves an ω bias of about 1e-9 s⁻¹ per interval, which grows to about 1e-4 rad of terminal attitude error (measured).
 
 ## Outputs (`results/`)
@@ -83,7 +89,7 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
   - Next to the 3D view, three time histories with a moving cursor, as in the Malladi animation:
     - the eigenaxis attitude error θ_i;
     - the relative position r^f_pi;
-    - all 20 thrust magnitudes in one plot, coloured by pod, with T_max.
+    - the thrust magnitude of each of the 20 thrusters (one colour each), drawn as one vertical line per control interval and overlaid, with T_max. Thrusters with the largest total impulse are drawn first, so weaker ones remain visible on top.
   - Every frame shows the elapsed time and the playback rate.
   - The spacecraft follows Fig. 3: upper and lower cylinders, and a central ring carrying the four pods on ±x^i and ±y^i. All 20 nozzles are drawn at r^i_itk and point along −d_k.
   - Each firing thruster gets its own narrow plume. The plume's brightness is ∝ T/T_max, and its length runs from 30% (so any firing thruster stays visible) up to full length at T_max.
