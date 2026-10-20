@@ -79,11 +79,15 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
 - **Videos** (written by `makeVideo`, drawn live in a MATLAB figure; off-screen in `-batch` mode)
   - `video_SER.mp4` and `video_formation.mp4` share the same frame times.
   - Both show the virtual formation as a pyramid. Its four collectors lie in the z_f = 0 plane, one of them at the target point p, and the combiner sits at the apex on z_f. This geometry is set by `p.viz` and is for drawing only.
-  - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The thruster panel and plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
-  - Every frame shows the time, the playback rate, a 20-thruster activity panel and a burn timeline.
+  - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
+  - Next to the 3D view, three time histories with a moving cursor, as in the Malladi animation:
+    - the eigenaxis attitude error θ_i;
+    - the relative position r^f_pi;
+    - all 20 thrust magnitudes in one plot, coloured by pod, with T_max.
+  - Every frame shows the elapsed time and the playback rate.
   - The spacecraft follows Fig. 3: upper and lower cylinders, and a central ring carrying the four pods on ±x^i and ±y^i. All 20 nozzles are drawn at r^i_itk and point along −d_k.
   - Each firing thruster gets its own narrow plume. The plume's brightness is ∝ T/T_max, and its length runs from 30% (so any firing thruster stays visible) up to full length at T_max.
-  - In the main view the spacecraft is drawn ×3. A true-scale close-up in the body frame shows which nozzles fire.
+  - In the main view the spacecraft is drawn ×3. A true-scale inset in the body frame (top left) shows which nozzles fire.
 - **Data**
   - `solution.mat` (v7.3) holds the solution, the propagation, the reference and the parameters.
   - `summary.json`, `settings.json`.

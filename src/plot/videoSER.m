@@ -17,7 +17,7 @@ pan = videoPanels(fig, res, p, ...
     'Sun-Earth rotating frame O^b: formation-centred view, SER-parallel axes');
 
 % Close-up
-ax = axes(fig, 'Position', [0.03 0.10 0.62 0.78]); hold(ax, 'on');
+ax = axes(fig, 'Position', [0.17 0.09 0.49 0.76]); hold(ax, 'on');
 hP = plot3(ax, dB(1,:), dB(2,:), dB(3,:), ':', 'Color', [0.4 0.4 0.4]);
 hT = plot3(ax, tgtB(1,:), tgtB(2,:), tgtB(3,:), '--', 'Color', [0.2 0.4 0.9]);
 trail = plot3(ax, nan, nan, nan, 'k', 'LineWidth', 1.5);

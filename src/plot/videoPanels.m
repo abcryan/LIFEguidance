@@ -1,45 +1,64 @@
 function pan = videoPanels(fig, res, p, titleStr)
-%VIDEOPANELS Side panels shared by both videos: title, elapsed time and
-%   playback rate, a true-scale body-frame close-up of the spacecraft with
-%   its firing nozzles, twenty-thruster activity bars and a burn timeline.
+%VIDEOPANELS Panels shared by both videos: title with elapsed time and
+%   playback rate, a true-scale body-frame inset of the spacecraft, and
+%   three time histories with a moving cursor (cf. the Malladi animation):
+%   eigenaxis attitude error, relative position r^f_pi, and the twenty
+%   thrust magnitudes with Tmax.
 s = plotStyle();
 pan.title = annotation(fig, 'textbox', [0.01 0.935 0.98 0.06], 'String', titleStr, ...
     'EdgeColor', 'none', 'FontSize', 15, 'FontWeight', 'bold', 'HorizontalAlignment', 'left');
-pan.time = annotation(fig, 'textbox', [0.66 0.86 0.33 0.08], 'EdgeColor', 'none', ...
+pan.time = annotation(fig, 'textbox', [0.01 0.885 0.60 0.05], 'EdgeColor', 'none', ...
     'FontSize', 12, 'FontName', 'FixedWidth', 'FitBoxToText', 'off');
-pan.info = annotation(fig, 'textbox', [0.66 0.74 0.33 0.12], 'EdgeColor', 'none', ...
-    'FontSize', 9, 'FontName', 'FixedWidth', 'FitBoxToText', 'off', 'Interpreter', 'none');
 
-% Body-frame close-up at true scale (fixed camera in O^i)
-pan.axS = axes(fig, 'Position', [0.67 0.39 0.32 0.35]); hold(pan.axS, 'on');
+% Body-frame inset at true scale (fixed camera in O^i)
+pan.axS = axes(fig, 'Position', [0.00 0.66 0.15 0.23]); hold(pan.axS, 'on');
 pan.sc = drawSpacecraft(pan.axS, p, 1);
-axis(pan.axS, 'equal'); axis(pan.axS, [-6.5 6.5 -6.5 6.5 -3 5.5]); view(pan.axS, 35, 25);
 cols = [0.85 0.1 0.1; 0.1 0.6 0.1; 0.1 0.2 0.9]; nm = {'x^i', 'y^i', 'z^i'};
 for i = 1:3
     e = 6*((1:3)' == i);
     text(pan.axS, e(1), e(2), e(3), nm{i}, 'Color', cols(i,:), 'FontWeight', 'bold', 'FontSize', 9);
 end
-axis(pan.axS, 'vis3d', 'off'); camzoom(pan.axS, 1.5);
+axis(pan.axS, 'equal'); axis(pan.axS, [-6.5 6.5 -6.5 6.5 -3 5.5]); view(pan.axS, 35, 25);
+axis(pan.axS, 'vis3d', 'off'); camzoom(pan.axS, 1.4);
 camlight(pan.axS, 'headlight'); lighting(pan.axS, 'gouraud');
-annotation(fig, 'textbox', [0.67 0.37 0.32 0.03], 'String', ...
-    'spacecraft in body frame O^i, true scale, plume 3 m at T_{max}', 'EdgeColor', 'none', ...
-    'FontSize', 8, 'HorizontalAlignment', 'center');
+annotation(fig, 'textbox', [0.00 0.635 0.15 0.03], 'String', ...
+    {'body frame O^i, true scale'}, 'EdgeColor', 'none', ...
+    'FontSize', 7, 'HorizontalAlignment', 'center');
 
-pan.axT = axes(fig, 'Position', [0.70 0.17 0.28 0.17]);
-pan.bar = bar(pan.axT, 1:p.nThr, zeros(1, p.nThr), 'FaceColor', 'flat');
-pan.bar.CData = s.pod(p.thr.pod, :);
-ylim(pan.axT, [0 1]); xlim(pan.axT, [0.4 p.nThr + 0.6]); grid(pan.axT, 'on');
-set(pan.axT, 'XTick', 1:p.nThr, 'XTickLabel', p.thr.label, 'XTickLabelRotation', 90, 'FontSize', 7);
-ylabel(pan.axT, 'T_{ik}/T_{max}'); title(pan.axT, 'Peak thrust since last frame (colour = pod)', 'FontSize', 9);
+t = res.prop.t; tau = res.sol.tau;
+pan.tHist = t;
 
-pan.axL = axes(fig, 'Position', [0.70 0.03 0.28 0.05]);
-hold(pan.axL, 'on');
-for b = 1:numel(res.burns)
-    B = res.burns(b);
-    patch(pan.axL, [B.t0 B.t1 B.t1 B.t0], [0 0 1 1], [0.9 0.2 0.1], 'EdgeColor', [0.9 0.2 0.1]);
+% 1) Eigenaxis attitude error with a moving marker
+pan.axA = axes(fig, 'Position', [0.70 0.70 0.28 0.19]); hold(pan.axA, 'on'); grid(pan.axA, 'on');
+pan.thetaDeg = rad2deg(res.thetaAtan);
+plot(pan.axA, t, pan.thetaDeg, 'Color', s.comp(1,:), 'LineWidth', 1.2);
+pan.dot = plot(pan.axA, 0, pan.thetaDeg(1), 'o', 'MarkerSize', 7, ...
+               'MarkerFaceColor', [0.95 0.2 0.15], 'MarkerEdgeColor', [0.95 0.2 0.15]);
+xlim(pan.axA, [0 tau]); ylabel(pan.axA, '\theta_i (deg)'); set(pan.axA, 'FontSize', 8);
+
+% 2) Relative position components with a time cursor
+pan.axR = axes(fig, 'Position', [0.70 0.41 0.28 0.19]); hold(pan.axR, 'on'); grid(pan.axR, 'on');
+for c = 1:3
+    plot(pan.axR, t, res.prop.x(7 + c,:), 'Color', s.comp(c,:), 'LineWidth', 1.2);
 end
-pan.cursor = xline(pan.axL, 0, 'k', 'LineWidth', 2);
-xlim(pan.axL, [0 res.sol.tau]); ylim(pan.axL, [0 1]); set(pan.axL, 'YTick', []);
-set(pan.axL, 'FontSize', 7); title(pan.axL, 'Timeline, t (s) (red: burns)', 'FontSize', 9);
-box(pan.axL, 'on');
+pan.curR = xline(pan.axR, 0, 'Color', [0.25 0.25 0.25], 'LineWidth', 1.2);
+legend(pan.axR, {'x', 'y', 'z'}, 'Location', 'northeast', 'AutoUpdate', 'off', 'FontSize', 7);
+xlim(pan.axR, [0 tau]); ylabel(pan.axR, 'r^f_{pi} (m)'); set(pan.axR, 'FontSize', 8);
+
+% 3) All twenty thrust magnitudes (pod colour, five shades per pod) and Tmax
+pan.axT = axes(fig, 'Position', [0.70 0.10 0.28 0.21]); hold(pan.axT, 'on'); grid(pan.axT, 'on');
+sol = res.sol;
+hp = gobjects(1, 4);
+for k = 1:p.nThr
+    j = p.thr.pod(k); shade = mod(k - 1, 5)/5;
+    col = s.pod(j,:)*(1 - 0.6*shade) + 0.6*shade*[1 1 1].*0.8;
+    hk = stairs(pan.axT, sol.tNode, [sol.T(k,:), sol.T(k,end)], 'Color', col, 'LineWidth', 1.1);
+    if mod(k - 1, 5) == 0, hp(j) = hk; end
+end
+hmax = yline(pan.axT, p.Tmax, 'k--', 'LineWidth', 1.2);
+pan.curT = xline(pan.axT, 0, 'Color', [0.25 0.25 0.25], 'LineWidth', 1.2);
+legend(pan.axT, [hp, hmax], {'pod 1', 'pod 2', 'pod 3', 'pod 4', 'T_{max}'}, ...
+       'Location', 'east', 'AutoUpdate', 'off', 'FontSize', 7);
+xlim(pan.axT, [0 tau]); ylim(pan.axT, [0 1.1*p.Tmax]);
+ylabel(pan.axT, 'T_{ik} (N)'); xlabel(pan.axT, 'Time t (s)'); set(pan.axT, 'FontSize', 8);
 end

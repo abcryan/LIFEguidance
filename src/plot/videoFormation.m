@@ -8,7 +8,7 @@ rf = x(8:10,:) + p.rfp;                  % r^f_fi
 
 fig = newFigure('videoFormation', [50 50 1280 720]); fig.Resize = 'off';
 pan = videoPanels(fig, res, p, 'Virtual formation frame O^f (rotating with the formation)');
-ax = axes(fig, 'Position', [0.03 0.06 0.62 0.85]); hold(ax, 'on');
+ax = axes(fig, 'Position', [0.17 0.09 0.49 0.76]); hold(ax, 'on');
 plot3(ax, rf(1,:), rf(2,:), rf(3,:), ':', 'Color', [0.4 0.4 0.4]);
 trail = plot3(ax, nan, nan, nan, 'k', 'LineWidth', 1.5);
 plot3(ax, p.rfp(1), p.rfp(2), p.rfp(3), 'o', 'MarkerSize', 10, ...
