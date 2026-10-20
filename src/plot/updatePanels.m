@@ -10,5 +10,6 @@ pan.info.String = {sprintf('|r_pi|   = %9.4f m', norm(x(8:10))), ...
                    sprintf('|w_fi|   = %9.2e 1/s', norm(x(5:7))), ...
                    sprintf('sum T    = %9.3f N', sum(T))};
 pan.bar.YData = T'/p.Tmax;
+setSpacecraftPose(pan.sc, eye(3), zeros(3, 1), T, 3);
 pan.cursor.Value = t;
 end
