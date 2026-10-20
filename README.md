@@ -81,15 +81,9 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
   - Thrust: `thrust_histories.png` (per pod), `thrust_burn_zoom.png`, `thrust_heatmap.png`.
   - `impulse.png`: cumulative impulse and per-thruster impulse.
   - `propagation_discrepancy.png`.
-  - Static trajectories: `trajectory_formation.png`, `trajectory_SER.png`.
-  - `halo_orbit.png`: where the virtual formation flies. It has four panels:
-    - the L₂ halo in 3D (SER frame, centred on L₂), with the Sun direction, the formation axes and the line of sight to the target star;
-    - the ecliptic view, with Earth;
-    - the view from Earth;
-    - a zoom on the 4 h arc, with the formation axes spinning about the line of sight.
+  - Static trajectories: `trajectory_formation.png`, `trajectory_SER.png`, and the halo orbit alone in `halo_orbit.png`.
 - **Videos** (written by `makeVideo`, drawn live in a MATLAB figure; off-screen in `-batch` mode)
   - `video_SER.mp4` and `video_formation.mp4` share the same frame times.
-  - Both show the formation's orbital (halo) trajectory. At the scale of the scene it is a straight line through the formation origin along its direction of motion (≈298 m/s), in SER axes or in formation axes respectively.
   - Both show the virtual formation as a pyramid. Its four collectors lie in the z_f = 0 plane, one of them at the target point p, and the combiner sits at the apex on z_f. This geometry is set by `p.viz` and is for drawing only.
   - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
   - Next to the 3D view, three time histories with a moving cursor, as in the Malladi animation:
