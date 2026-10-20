@@ -11,6 +11,7 @@ list = {
     'propagation_discrepancy', @() plotDiscrepancy(res, p)
     'trajectory_formation', @() plotTrajectoryFormation(res, p)
     'trajectory_SER',      @() plotTrajectorySER(res, p)
+    'halo_orbit',          @() plotHaloOrbit(res, p)
     };
 for k = 1:size(list, 1)
     figs.(list{k, 1}) = list{k, 2}();

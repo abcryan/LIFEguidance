@@ -75,9 +75,10 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
   - Thrust: `thrust_histories.png` (per pod), `thrust_burn_zoom.png`, `thrust_heatmap.png`.
   - `impulse.png`: cumulative impulse and per-thruster impulse.
   - `propagation_discrepancy.png`.
-  - Static trajectories: `trajectory_formation.png`, `trajectory_SER.png`.
+  - Static trajectories: `trajectory_formation.png`, `trajectory_SER.png`, and the halo orbit alone in `halo_orbit.png`.
 - **Videos** (written by `makeVideo`, drawn live in a MATLAB figure; off-screen in `-batch` mode)
   - `video_SER.mp4` and `video_formation.mp4` share the same frame times.
+  - Both show the virtual formation as a pyramid. Its four collectors lie in the z_f = 0 plane, one of them at the target point p, and the combiner sits at the apex on z_f. This geometry is set by `p.viz` and is for drawing only.
   - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The thruster panel and plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
   - Every frame shows the time, the playback rate, a 20-thruster activity panel and a burn timeline.
   - Plumes point opposite to the force, scaled with T/T_max. The spacecraft is drawn ×3.

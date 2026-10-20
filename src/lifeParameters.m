@@ -26,6 +26,11 @@ p.obliquity = deg2rad(23.43928);        % epsilon
 p.ws   = 2*pi/86400;                    % formation spin [rad/s]
 p.phi0 = 0;
 p.rfp  = [50; 0; 0];                    % target point in O^f [m]
+% Virtual formation drawn in the videos (CHOICE, visualization only): four
+% collectors in the z_f = 0 plane, one of them at the target point p, and
+% the combiner at the pyramid apex on z_f
+p.viz.collectors = [50 0 -50 0; 0 50 0 -50; 0 0 0 0];   % [m], columns
+p.viz.combiner   = [0; 0; 50];                          % [m]
 
 %% Spacecraft, Sec. 4.3
 p.m    = 4000;                          % [kg]
