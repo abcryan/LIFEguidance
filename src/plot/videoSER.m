@@ -1,6 +1,7 @@
 function videoSER(res, p, sched, file)
 %VIDEOSER Animation in the Sun-Earth rotating frame: formation-centred
-%   view with SER-parallel axes (rotating virtual formation, spacecraft
+%   view with SER-parallel axes (rotating virtual formation, the initial
+%   formation at t = 0 (fixed, for reference), spacecraft
 %   path, moving target point, formation axes, plumes). The halo orbit
 %   itself is in the static figure halo_orbit.png.
 mag = 3; plumeLen = 4;
@@ -28,7 +29,10 @@ fAx = gobjects(3, 1); cols = [0.85 0.1 0.1; 0.1 0.6 0.1; 0.1 0.2 0.9];
 for i = 1:3
     fAx(i) = plot3(ax, nan, nan, nan, '-', 'Color', cols(i,:), 'LineWidth', 1.2);
 end
-hf = drawFormation(ax, p);
+hf = drawFormation(ax, [p.viz.collectors, p.viz.combiner]);
+% Initial formation at t = 0 (visualization only; fixed in the SER axes)
+h0 = drawFormation(ax, initialFormationPoints(p), [0.45 0.45 0.45]);
+setFormationPose(h0, res.Rbf(:,:,1));
 h = drawSpacecraft(ax, p, mag);
 % Zoom on the approach (trajectory and moving target point); the pyramid
 % edges are clipped at the axes box and show where it continues
@@ -38,7 +42,8 @@ camlight(ax, 'headlight'); lighting(ax, 'gouraud');
 xlabel(ax, 'x_b (m)'); ylabel(ax, 'y_b (m)'); zlabel(ax, 'z_b (m)');
 title(ax, {'origin: formation centre, axes parallel to SER', ...
     sprintf('spacecraft drawn x%d, plume %g m at T_{max}', mag, plumeLen*mag)}, 'FontSize', 9);
-legend(ax, [hP, hT, hf.dots], {'spacecraft path', 'target path', 'virtual formation'}, ...
+legend(ax, [hP, hT, hf.dots, h0.dots], {'spacecraft path', 'target path', 'virtual formation', ...
+       'initial formation (t = 0)'}, ...
        'Location', 'southoutside', ...
        'Orientation', 'horizontal', 'AutoUpdate', 'off');
 

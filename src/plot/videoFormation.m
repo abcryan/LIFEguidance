@@ -1,6 +1,7 @@
 function videoFormation(res, p, sched, file)
 %VIDEOFORMATION Animation in the virtual formation frame O^f: stationary
-%   virtual formation and target point, approach path, spacecraft
+%   virtual formation and target point, the initial formation at t = 0
+%   (fixed, for reference), approach path, spacecraft
 %   attitude, formation and body axes, exhaust plumes.
 mag = 3; plumeLen = 4;
 x = res.prop.x;
@@ -14,7 +15,13 @@ trail = plot3(ax, nan, nan, nan, 'k', 'LineWidth', 1.5);
 plot3(ax, p.rfp(1), p.rfp(2), p.rfp(3), 'o', 'MarkerSize', 10, ...
       'MarkerFaceColor', [0.2 0.4 0.9], 'Color', 'k');
 text(ax, p.rfp(1), p.rfp(2), p.rfp(3), '   target point p', 'FontSize', 9, 'Clipping', 'on');
-drawFormation(ax, p);
+drawFormation(ax, [p.viz.collectors, p.viz.combiner]);
+% Initial formation at t = 0 (visualization only; fixed in O^f)
+V0 = initialFormationPoints(p);
+drawFormation(ax, V0, [0.45 0.45 0.45]);
+k0 = p.init.point;
+text(ax, V0(1,k0), V0(2,k0), V0(3,k0), '  initial formation (t = 0)', 'FontSize', 8, ...
+     'Color', [0.45 0.45 0.45], 'Clipping', 'on', 'VerticalAlignment', 'top');
 % Zoom on the approach (trajectory and target point); the pyramid edges are
 % clipped at the axes box and show where it continues
 lim = reshape(zoomLimits([rf, p.rfp], 20, 0.35), 2, [])';
