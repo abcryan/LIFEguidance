@@ -110,7 +110,7 @@ with N = 200, all checks pass except the attitude check (60), which gives
   - Static trajectories: `trajectory_formation.png`, `trajectory_SER.png`, and the halo orbit alone in `halo_orbit.png`.
 - **Videos** (written by `makeVideo`, drawn live in a MATLAB figure; off-screen in `-batch` mode)
   - `video_SER.mp4` and `video_formation.mp4` share the same frame times.
-  - Both show the target formation pyramid (80 × 480 m, apex at 960 m).
+  - Both show the target formation pyramid (80 × 480 m, apex at 960 m). The view is zoomed on the spacecraft trajectory and the target point, so the pyramid edges are clipped at the box and show where it continues.
   - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
   - Next to the 3D view, three time histories with a moving cursor, as in the Malladi animation:
     - the eigenaxis attitude error θ_i;
@@ -119,7 +119,7 @@ with N = 200, all checks pass except the attitude check (60), which gives
   - Every frame shows the elapsed time and the playback rate.
   - The spacecraft follows Fig. 3: upper and lower cylinders, and a central ring carrying the four pods on ±x^i and ±y^i. All 20 nozzles are drawn at r^i_itk and point along −d_k.
   - Each firing thruster gets its own narrow plume. The plume's brightness is ∝ T/T_max, and its length runs from 30% (so any firing thruster stays visible) up to full length at T_max.
-  - In the main view the spacecraft is drawn ×6. A true-scale inset in the body frame (top left) shows which nozzles fire.
+  - In the main view the spacecraft is drawn ×3. A true-scale inset in the body frame (top left) shows which nozzles fire.
 - **Data**
   - `solution.mat` (v7.3) holds the solution, the propagation, the reference and the parameters.
   - `summary.json`, `settings.json`.

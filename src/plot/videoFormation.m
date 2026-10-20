@@ -2,7 +2,7 @@ function videoFormation(res, p, sched, file)
 %VIDEOFORMATION Animation in the virtual formation frame O^f: stationary
 %   virtual formation and target point, approach path, spacecraft
 %   attitude, formation and body axes, exhaust plumes.
-mag = 6; plumeLen = 4;
+mag = 3; plumeLen = 4;
 x = res.prop.x;
 rf = x(8:10,:) + p.rfp;                  % r^f_fi
 
@@ -13,17 +13,18 @@ plot3(ax, rf(1,:), rf(2,:), rf(3,:), ':', 'Color', [0.4 0.4 0.4]);
 trail = plot3(ax, nan, nan, nan, 'k', 'LineWidth', 1.5);
 plot3(ax, p.rfp(1), p.rfp(2), p.rfp(3), 'o', 'MarkerSize', 10, ...
       'MarkerFaceColor', [0.2 0.4 0.9], 'Color', 'k');
-text(ax, p.rfp(1), p.rfp(2), p.rfp(3), '   target point p', 'FontSize', 9);
+text(ax, p.rfp(1), p.rfp(2), p.rfp(3), '   target point p', 'FontSize', 9, 'Clipping', 'on');
 drawFormation(ax, p);
-V = [p.viz.collectors, p.viz.combiner];
-lim = [min([rf, V], [], 2) - 15, max([rf, V], [], 2) + 15];
-L = 0.15*max(lim(:,2) - lim(:,1));
+% Zoom on the approach (trajectory and target point); the pyramid edges are
+% clipped at the axes box and show where it continues
+lim = reshape(zoomLimits([rf, p.rfp], 20, 0.35), 2, [])';
+L = 0.4*max(lim(:,2) - lim(:,1));
 cols = [0.85 0.1 0.1; 0.1 0.6 0.1; 0.1 0.2 0.9];
 nm = {'x_f', 'y_f', 'z_f'};
 for i = 1:3
     e = L*((1:3)' == i);
     plot3(ax, [0 e(1)], [0 e(2)], [0 e(3)], '-', 'Color', cols(i,:), 'LineWidth', 2);
-    text(ax, e(1), e(2), e(3), nm{i}, 'Color', cols(i,:), 'FontWeight', 'bold');
+    text(ax, e(1), e(2), e(3), nm{i}, 'Color', cols(i,:), 'FontWeight', 'bold', 'Clipping', 'on');
 end
 h = drawSpacecraft(ax, p, mag);
 axis(ax, 'equal'); axis(ax, reshape(lim', 1, [])); grid(ax, 'on'); view(ax, 40, 22);
