@@ -1,4 +1,4 @@
-function plotResults(res, levels, p, outDir)
+function plotResults(res, p, outDir)
 %PLOTRESULTS Static figures of Sec. 4.4 (PNG), physical time throughout.
 figs = {
     'tracking_errors',     @() plotTracking(res, p)
@@ -8,7 +8,6 @@ figs = {
     'thrust_heatmap',      @() plotHeatmap(res, p)
     'impulse',             @() plotImpulse(res, p)
     'propagation_discrepancy', @() plotDiscrepancy(res, p)
-    'mesh_convergence',    @() plotMeshConvergence(levels, p)
     'trajectory_formation', @() plotTrajectoryFormation(res, p)
     'trajectory_SER',      @() plotTrajectorySER(res, p)
     };

@@ -6,11 +6,11 @@ function sched = videoSchedule(res, p, opts)
 arguments
     res struct
     p struct
-    opts.fps (1,1) double = 30
-    opts.coastVideo (1,1) double = 24    % [s] of video for the whole span
-    opts.burnVideo (1,1) double = 3
-    opts.rampVideo (1,1) double = 1
-    opts.holdVideo (1,1) double = 0.5
+    opts.fps (1,1) double = 15
+    opts.coastVideo (1,1) double = 12    % [s] of video for the whole span
+    opts.burnVideo (1,1) double = 1
+    opts.rampVideo (1,1) double = 0.3
+    opts.holdVideo (1,1) double = 0.2
 end
 tau = res.sol.tau;
 vCoast = tau/opts.coastVideo;

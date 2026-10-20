@@ -54,7 +54,10 @@ p.tf     = 4*3600;                      % arrival deadline [s]
 p.tauMin = 1;                           % numerical lower bound on tau [s]
 
 %% Transcription, Sec. 4.3 "Numerical solution and verification"
-p.ocp.N0     = 200;                     % initial uniform intervals
+% Uniform intervals. CHOICE: the document's initial N = 200 fails the
+% attitude check (60) (theta = 2.3e-4 rad); N = 400 passes all of
+% (59)-(60) with build + solve in ~40 s.
+p.ocp.N      = 400;
 p.ocp.d      = 3;                       % Radau collocation points
 p.ocp.uGuess = 0.01;                    % T/Tmax initial guess
 % State scaling [q; w; r; v]: quaternion unscaled, 1e-3 1/s, 100 m, 0.1 m/s
@@ -70,21 +73,8 @@ p.ocp.ipopt  = struct('tol', 1e-8, 'constr_viol_tol', 1e-8, ...
                       'bound_relax_factor', 0, ...
                       'linear_solver', 'mumps', 'print_level', 5, ...
                       'print_frequency_iter', 50);
-% Mesh refinement (CHOICE where the document is silent)
-p.mesh.burnTol   = 1e-3*p.Tmax;         % sum_k T_k above this = firing [N]
-p.mesh.relTolJ   = 0.01;                % "doubling N changes J < 1%"
-p.mesh.maxLevels = 8;
-p.mesh.maxN      = 2000;
-p.mesh.locErrTol = 1e-3;                % per-interval error / gate
-% Per-burn convergence between successive levels (reported; features that
-% do not converge are labelled mesh-dependent)
-p.mesh.burnRelTol  = 0.01;              % inertial force/torque integrals
-p.mesh.burnFloorF  = 1e-2;              % [N s]
-p.mesh.burnFloorT  = 1e-2;              % [N m s]
-p.mesh.burnShapeTol = 0.05;             % duration and peak thrust
-% IPOPT options for warm-started levels
-p.ocp.ipoptWarm = struct('mu_init', 1e-6, 'bound_push', 1e-8, ...
-                         'bound_frac', 1e-8);
+% A burn is a run of intervals with sum_k T_k above this (CHOICE) [N]
+p.burnTol = 1e-3*p.Tmax;
 
 %% Forward propagation and acceptance, eqs. (59)-(60)
 p.prop.RelTol = 1e-11;                  % on scaled states

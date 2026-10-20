@@ -10,7 +10,7 @@ for b = 1:numel(burns)
     pad = max(0.25*B.duration, 2);
     ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on');
     for k = 1:p.nThr
-        if max(sol.T(k, B.n0:B.n1)) > p.mesh.burnTol
+        if max(sol.T(k, B.n0:B.n1)) > p.burnTol
             stairs(ax, sol.tNode, [sol.T(k,:), sol.T(k,end)], 'Color', s.pod(p.thr.pod(k),:), ...
                    'LineWidth', 1.4, 'DisplayName', char(p.thr.label(k)));
         end

@@ -4,7 +4,7 @@ function burns = detectBurns(sol, prop, p)
 %   impulse, and the force and torque integrals in the inertial frame c,
 %   int R^c_i f^i dt and int R^c_i tau^i dt (Simpson on the propagated
 %   attitude), plus the body-frame integrals as diagnostics.
-on = sum(sol.T, 1) > p.mesh.burnTol;
+on = sum(sol.T, 1) > p.burnTol;
 d = diff([false, on, false]);
 first = find(d == 1); last = find(d == -1) - 1;
 nb = numel(first);

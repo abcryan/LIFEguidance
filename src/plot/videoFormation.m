@@ -30,7 +30,7 @@ xlabel(ax, 'x_f (m)'); ylabel(ax, 'y_f (m)'); zlabel(ax, 'z_f (m)');
 title(ax, {'formation axes at origin; body axes red/green/blue', ...
     sprintf('spacecraft drawn x%d, plume %g m at T_{max}', mag, plumeLen*mag)}, 'FontSize', 9);
 
-vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = 90;
+vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = 75;
 open(vw); cleanup = onCleanup(@() close(vw));
 warnState = warning('off', 'MATLAB:hg:DiceyTransformMatrix');
 restore = onCleanup(@() warning(warnState));

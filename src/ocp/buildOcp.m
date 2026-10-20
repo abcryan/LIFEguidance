@@ -1,14 +1,13 @@
-function ocp = buildOcp(p, ref, sigma, warm)
-%BUILDOCP Minimum-impulse transfer, eqs. (35)-(40), by Radau collocation.
-%   sigma: interval fractions of the normalized time s = t/tau (sum 1).
-%   warm (optional): use the warm-start IPOPT options p.ocp.ipoptWarm.
+function ocp = buildOcp(p, ref)
+%BUILDOCP Minimum-impulse transfer, eqs. (35)-(40), by Radau collocation
+%   on p.ocp.N uniform intervals of the normalized time s = t/tau.
 %   Decision vector w = [tau/tf; X(:); XC(:); U(:)] with scaled states
 %   X (13 x N+1 nodes), XC (13 x N*d collocation points) and piecewise-
-%   constant T/Tmax U (20 x N). Interval n lasts h_n = tau*sigma_n and the
-%   objective is sum_n h_n sum_k T_k,n, which equals (58) on a uniform mesh.
+%   constant T/Tmax U (20 x N). Each interval lasts h = tau/N and the
+%   objective is (58), h*sum_n sum_k T_k,n.
 import casadi.*
-sigma = sigma(:)'/sum(sigma);
-N = numel(sigma); d = p.ocp.d; nx = 13; nu = p.nThr;
+N = p.ocp.N; d = p.ocp.d; nx = 13; nu = p.nThr;
+sigma = ones(1, N)/N;
 [cRoot, C, D] = radauCoefficients(d);
 S = p.ocp.xScale;
 
@@ -64,13 +63,7 @@ lbx = -inf(nW, 1); ubx = inf(nW, 1);
 lbx(ix.tau) = p.tauMin/p.tf; ubx(ix.tau) = 1;
 lbx(ix.U) = 0; ubx(ix.U) = 1;
 
-ipopt = p.ocp.ipopt;
-if nargin > 3 && warm                   % warm start: begin near the solution
-    for fn = fieldnames(p.ocp.ipoptWarm)'
-        ipopt.(fn{1}) = p.ocp.ipoptWarm.(fn{1});
-    end
-end
-opts = struct('expand', true, 'print_time', false, 'ipopt', ipopt);
+opts = struct('expand', true, 'print_time', false, 'ipopt', p.ocp.ipopt);
 ocp.solver = nlpsol('solver', 'ipopt', struct('x', w, 'f', J, 'g', g), opts);
 ocp.lbx = lbx; ocp.ubx = ubx;
 ocp.lbg = zeros(size(g)); ocp.ubg = zeros(size(g));

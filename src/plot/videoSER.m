@@ -52,7 +52,7 @@ title(ax, {'origin: formation centre, axes parallel to SER', ...
 legend(ax, {'spacecraft path', 'target path'}, 'Location', 'southoutside', ...
        'Orientation', 'horizontal', 'AutoUpdate', 'off');
 
-vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = 90;
+vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = 75;
 open(vw); cleanup = onCleanup(@() close(vw));
 warnState = warning('off', 'MATLAB:hg:DiceyTransformMatrix');
 restore = onCleanup(@() warning(warnState));

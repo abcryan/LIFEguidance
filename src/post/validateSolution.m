@@ -1,13 +1,9 @@
-function res = validateSolution(levels, final, ref, p)
-%VALIDATESOLUTION Independent checks of the reported refinement level.
+function res = validateSolution(sol, info, ref, p)
+%VALIDATESOLUTION Independent checks of the optimized solution.
 %   All reported errors and all animations are based on the forward
 %   propagation (propagateRelative), not on the collocation trajectory.
-lv = levels(final);
-sol = lv.sol;
 res.sol = sol;
-res.info = lv.info;
-res.level = lv.level;
-res.final = final;
+res.info = info;
 
 % Independent forward propagation (dense output for plots and videos)
 res.prop = propagateRelative(sol, p, 9);
@@ -40,7 +36,7 @@ res.RorthProp = Rerr;
 res.J = sol.J;
 res.dm = sol.J/(p.g0*p.Isp);
 res.maxThrust = max(sol.T(:));
-res.boundViolation = lv.info.boundViolation;
+res.boundViolation = info.boundViolation;
 res.thrusterImpulse = sol.T*sol.h';     % 20x1 [N s]
 [res.f, res.tau] = thrusterWrench(sol.T, p);
 res.cumImpulse = [0, cumsum(sol.h.*sum(sol.T, 1))];
@@ -62,30 +58,5 @@ solFull = ode89(@(~, z) cr3bpNormalized(z, p.eta), [0, p.Om*haloT(end)], p.haloI
 res.haloFull = deval(solFull, p.Om*haloT);        % normalized
 res.refFitErr = ref.fitErr;
 
-% Convergence history
-res.history = levelTable(levels);
-res.doublingDJ = levels(min(2, end)).dJ;
-lastCmp = lv.burnCmp;
-if isempty(lastCmp)
-    res.burnsConverged = false; res.burnCmp = [];
-else
-    res.burnsConverged = lastCmp.ok; res.burnCmp = lastCmp;
-end
-res.accepted = lv.info.success && res.term.passAll && lv.dJ < p.mesh.relTolJ;
-res.nLevels = numel(levels);
-end
-
-function tbl = levelTable(levels)
-n = numel(levels);
-tbl = table('Size', [n 16], 'VariableTypes', ...
-    {'double', 'double', 'logical', 'string', 'double', 'double', 'double', 'double', ...
-     'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double'}, ...
-    'VariableNames', {'level', 'N', 'uniform', 'status', 'iter', 'wallTime', 'tau', 'J', ...
-      'dJ', 'r', 'v', 'theta', 'w', 'maxThrust', 'nBurns', 'maxLocErr'});
-for k = 1:n
-    lv = levels(k);
-    tbl(k,:) = {lv.level, lv.N, lv.uniform, string(lv.info.status), lv.info.iter, ...
-        lv.info.wallTime, lv.sol.tau, lv.sol.J, lv.dJ, lv.term.r, lv.term.v, ...
-        lv.term.thetaAcos, lv.term.w, max(lv.sol.T(:)), numel(lv.burns), max(lv.loc.norm)};
-end
+res.accepted = info.success && res.term.passAll;
 end
