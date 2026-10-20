@@ -43,34 +43,60 @@ runtests('tests')    % model consistency checks (~5 s)
   - R_x, R_y, R_z are active rotations. This is the only reading under which eq. (52) gives ω^b_cb = +Ω e₃ and eq. (53) gives R^c_f e₃ = +e₂.
   - Eq. (19) needs the SER-frame velocity difference, which is reconstructed as R^b_f(ṙ^f_pi + ω^f_bf × r^f_fi).
 
+## Virtual formations and initial condition
+
+Both formations are built the same way, from a spec in `lifeParameters.m` (`p.target`, `p.init`):
+
+- **Shape.** A pyramid with four collectors at the corners of a nulling (x) × imaging (y) rectangle in its z = 0 plane, centred on the frame origin, and the combiner at the apex, `height` along +z.
+  - Points 1–4 are the corners (+,+), (−,+), (−,−), (+,−) in (x, y). Point 5 is the apex.
+- **Attitude.** The frame points at the `sky` direction (a unit vector in the inertial frame) and spins about it: R^c = skyBasis(sky)·R_z(phase0 + rate·t).
+  - skyBasis takes x = sky × e₃. With sky = e₂ this reproduces eq. (53).
+
+| | Target formation | Initial formation (exists only at t = 0) |
+|---|---|---|
+| Rectangle (nulling × imaging) | 80 × 480 m | 25 × 150 m |
+| Apex height | 960 m | 300 m |
+| Sky direction | e₂ | −e₂ (opposite) |
+| Spin | 2π/24 h about its own z | 2π/24 h about its own z (the same line, opposite axis) |
+| Point used | 1 → target point r^f_fp = [40, 240, 0] m | 1 → spacecraft start |
+
+The initial formation shares the target origin at t = 0, in both position and velocity. The spacecraft starts at the chosen point of the initial formation, with its body axes aligned with the initial frame, and co-rotates with it. That means:
+
+- R^c_i(0) = R^c_f0(0);
+- ω^i_ci(0) = rate·e₃;
+- the inertial velocity relative to the origin is ω_cf0 × r.
+
+This replaces the fixed initial state of eqs. (55)–(56). See `initialRelativeState.m`.
+
+For the defaults, the initial attitude error is 180° about y_f, and the start lies 173 m from the target corner. To change the setup, edit the sky direction, baselines, apex height, spin rate or phase, or the point, then call `deriveFormations(p)`.
+
+`tests/FormationTest.m` checks the construction. The central test maps the initial state into the absolute model and compares attitude, body rate, position and inertial velocity with the initial pyramid. It does this for all 5 points, for the default and for a randomly oriented, non-default initial formation.
+
 ## Results (nominal case, N = 400, T_max = 3 N, `results/summary.json`)
 
 T_max is set to 3 N in `lifeParameters.m`; the document specifies 10 N.
 
 | Quantity | Value |
 |---|---|
-| Solver | `Solve_Succeeded`, 184 iterations, 18 s (`main` total ~44 s) |
-| Arrival time τ | 14400 s, upper bound t_f active (multiplier 0.68) |
-| Total impulse J | 138.476 N s (Δm = 0.064 kg at I_sp = 220 s) |
-| Max thrust | 1.52 N (T_max = 3 N, bound not active), bound violation 0 |
-| Terminal ‖r‖ / ‖ṙ‖ | 2.2e-5 m / 1.5e-8 m/s (gates 1e-2 m, 1e-5 m/s) |
-| Terminal angle (eq. 60) / ‖ω‖ | 1.8e-6 rad / 2.2e-10 s⁻¹ (gates 1e-4 rad, 1e-7 s⁻¹) |
-| Absolute-model cross-check | ≤ 7.5e-9 m, 1.7e-12 m/s, 7.5e-14 rad (pass) |
-| max \|‖q‖−1\| | 5.5e-6 collocation, 8.9e-16 propagation |
+| Solver | `Solve_Succeeded`, 212 iterations, 20 s (`main` total ~45 s) |
+| Arrival time τ | 14400 s, upper bound t_f active (multiplier 0.72) |
+| Total impulse J | 174.266 N s (Δm = 0.081 kg at I_sp = 220 s) |
+| Max thrust | 1.66 N (T_max = 3 N, bound not active), bound violation 0 |
+| Terminal ‖r‖ / ‖ṙ‖ | 1.3e-6 m / 1.4e-9 m/s (gates 1e-2 m, 1e-5 m/s) |
+| Terminal angle (eq. 60) / ‖ω‖ | below the acos round-off floor (atan2 form 7.4e-8 rad) / 1.5e-11 s⁻¹ (gates 1e-4 rad, 1e-7 s⁻¹) |
+| Absolute-model cross-check | ≤ 1.7e-8 m, 1.2e-12 m/s, 1.5e-13 rad (pass) |
+| max \|‖q‖−1\| | 1.6e-6 collocation, 4.0e-15 propagation |
 
-With T_max = 10 N, the same mesh gave J = 138.079 N s. T_max also sets the
-control scaling and the initial guess (1% of T_max), so IPOPT ends in a
-nearby local optimum.
-
-Choice of N (measured with T_max = 10 N): with N = 200, all checks pass
-except the attitude check (60), which gives θ = 2.3e-4 rad.
+Choice of N (measured with the document's initial state and T_max = 10 N):
+with N = 200, all checks pass except the attitude check (60), which gives
+θ = 2.3e-4 rad.
 
 ### Known limitations
 
-- **Burns are not resolved.** The optimum is near-impulsive. On a uniform 36 s mesh, each burn is smeared over whole intervals at low thrust (peak 1.52 N), so the burn shapes are mesh artifacts.
+- **Burns are not resolved.** The optimum is near-impulsive. On a uniform 36 s mesh, each burn is smeared over whole intervals at low thrust (peak 1.66 N), so the burn shapes are mesh artifacts.
   - The earlier mesh-refinement version (commit `e963d5e`) resolved them, with saturated 10 N burns lasting a few seconds.
-  - It also reached a lower impulse, J = 131.57 N s at N = 770 nonuniform intervals (with T_max = 10 N).
-- **Local optimum only.** With T_max = 10 N, cold starts on different N reach different optima: J = 132.78 at N = 200, 136.80 at N = 300 and 138.08 at N = 400.
+  - For the document's initial state and T_max = 10 N, it also reached a lower impulse: J = 131.57 N s at N = 770 nonuniform intervals.
+- **Local optimum only.** With the document's initial state and T_max = 10 N, cold starts on different N reach different optima: J = 132.78 at N = 200, 136.80 at N = 300 and 138.08 at N = 400.
 - **IPOPT setting.** `bound_relax_factor = 0` is required. With IPOPT's default, `honor_original_bounds` clips the returned thrusts by ~1e-8·T_max. That leaves an ω bias of about 1e-9 s⁻¹ per interval, which grows to about 1e-4 rad of terminal attitude error (measured).
 
 ## Outputs (`results/`)
@@ -84,7 +110,7 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
   - Static trajectories: `trajectory_formation.png`, `trajectory_SER.png`, and the halo orbit alone in `halo_orbit.png`.
 - **Videos** (written by `makeVideo`, drawn live in a MATLAB figure; off-screen in `-batch` mode)
   - `video_SER.mp4` and `video_formation.mp4` share the same frame times.
-  - Both show the virtual formation as a pyramid. Its four collectors lie in the z_f = 0 plane, one of them at the target point p, and the combiner sits at the apex on z_f. This geometry is set by `p.viz` and is for drawing only.
+  - Both show the target formation pyramid (80 × 480 m, apex at 960 m).
   - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
   - Next to the 3D view, three time histories with a moving cursor, as in the Malladi animation:
     - the eigenaxis attitude error θ_i;
@@ -93,7 +119,7 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
   - Every frame shows the elapsed time and the playback rate.
   - The spacecraft follows Fig. 3: upper and lower cylinders, and a central ring carrying the four pods on ±x^i and ±y^i. All 20 nozzles are drawn at r^i_itk and point along −d_k.
   - Each firing thruster gets its own narrow plume. The plume's brightness is ∝ T/T_max, and its length runs from 30% (so any firing thruster stays visible) up to full length at T_max.
-  - In the main view the spacecraft is drawn ×3. A true-scale inset in the body frame (top left) shows which nozzles fire.
+  - In the main view the spacecraft is drawn ×6. A true-scale inset in the body frame (top left) shows which nozzles fire.
 - **Data**
   - `solution.mat` (v7.3) holds the solution, the propagation, the reference and the parameters.
   - `summary.json`, `settings.json`.
@@ -107,4 +133,5 @@ except the attitude check (60), which gives θ = 2.3e-4 rad.
 - `src/ocp/`: collocation NLP, initial guess, solve.
 - `src/sim/`, `src/post/`: propagation, burns, validation, saving.
 - `src/plot/`: figures and videos.
+- `tests/FormationTest.m`: formation construction and the initial condition (see above).
 - `tests/ModelTest.m`: constants, thruster positive span, frame conventions, halo period, gravity difference against vpa, eqs. (19)–(22) against the inertial path, CasADi against double, terminal equilibrium, quaternion against DCM kinematics, absolute against relative propagation.

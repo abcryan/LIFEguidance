@@ -41,5 +41,5 @@ w = h/3*[1, repmat([4 2], 1, (m - 3)/2), 4, 1];
 end
 
 function R = formationDcm(t, p)
-R = rot1(-pi/2)*rot3(p.phi0 + p.ws*t);
+R = formationAttitude(p.target, t);
 end

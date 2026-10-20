@@ -123,13 +123,13 @@ classdef ModelTest < matlab.unittest.TestCase
 
         function quaternionMatchesDcmKinematics(tc)
             % Quaternion form of (10) against the DCM ODE over 4 h
-            p = tc.p;
             w = @(t) 1e-3*[sin(1e-3*t); cos(7e-4*t); 0.5];
             qf = @(t, q) 0.5*quatMul([0; w(t)], q);
             Rf = @(t, R) reshape(skew(w(t))*reshape(R, 3, 3), 9, 1);
             o = odeset('RelTol', 1e-13, 'AbsTol', 1e-15);
-            [~, Q] = ode89(qf, [0 14400], dcmToQuat(p.ic.Rfi), o);
-            [~, R] = ode89(Rf, [0 14400], p.ic.Rfi(:), o);
+            R0 = rot2(pi/6);
+            [~, Q] = ode89(qf, [0 14400], dcmToQuat(R0), o);
+            [~, R] = ode89(Rf, [0 14400], R0(:), o);
             dR = quatToDcm(Q(end,:)')'*reshape(R(end,:), 3, 3);
             tc.verifyLessThan(acos(min((trace(dR) - 1)/2, 1)), 1e-6);
             tc.verifyLessThan(norm(dR - eye(3)), 1e-10);

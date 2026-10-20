@@ -3,7 +3,7 @@ function videoSER(res, p, sched, file)
 %   view with SER-parallel axes (rotating virtual formation, spacecraft
 %   path, moving target point, formation axes, plumes). The halo orbit
 %   itself is in the static figure halo_orbit.png.
-mag = 3; plumeLen = 4;
+mag = 6; plumeLen = 4;
 [xAll, ~] = stateAt(res, res.prop.t);
 nP = numel(res.prop.t);
 dB = zeros(3, nP); tgtB = zeros(3, nP);
@@ -49,7 +49,7 @@ vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = 75;
 open(vw); cleanup = onCleanup(@() close(vw));
 warnState = warning('off', 'MATLAB:hg:DiceyTransformMatrix');
 restore = onCleanup(@() warning(warnState));
-L = 0.25*(lim(2) - lim(1));
+L = 0.15*max(lim(2:2:6) - lim(1:2:5));
 for f = 1:numel(sched.t)
     t = sched.t(f);
     x = stateAt(res, t);

@@ -21,16 +21,25 @@ p.haloIC = [1.008311026993092; 0; 0.000800000000000; ...
             0; 0.009991106037634; 0];   % (51), normalized [r; v]
 p.haloPeriodDays = 180.29945;           % stated approximate period
 
-%% Frames, eqs. (52)-(54)
+%% Frames, eq. (52), and the virtual formations
 p.obliquity = deg2rad(23.43928);        % epsilon
-p.ws   = 2*pi/86400;                    % formation spin [rad/s]
-p.phi0 = 0;
-p.rfp  = [50; 0; 0];                    % target point in O^f [m]
-% Virtual formation drawn in the videos (CHOICE, visualization only): four
-% collectors in the z_f = 0 plane, one of them at the target point p, and
-% the combiner at the pyramid apex on z_f
-p.viz.collectors = [50 0 -50 0; 0 50 0 -50; 0 0 0 0];   % [m], columns
-p.viz.combiner   = [0; 0; 50];                          % [m]
+% A virtual formation is a pyramid: four collectors at the corners of a
+% nulling (x) x imaging (y) rectangle in its z = 0 plane, centred on the
+% frame origin, and the combiner at the apex, height along +z. The frame
+% points at the sky direction (unit vector in the inertial frame c) and
+% spins about it: R^c = skyBasis(sky)*Rz(phase0 + rate*t). Points 1-4 are
+% the corners (+,+), (-,+), (-,-), (+,-) in (x, y), point 5 is the apex.
+% Target formation (the spacecraft must reach p.target.point of it). With
+% sky = e2, phase0 = 0 and a 24 h spin it is eq. (53).
+p.target = struct('sky', [0; 1; 0], 'phase0', 0, 'rate', 2*pi/86400, ...
+                  'nulling', 80, 'imaging', 480, 'height', 960, 'point', 1);
+% Initial formation: exists only at t = 0, shares the target origin, and
+% defines the initial condition: the spacecraft sits at p.init.point with
+% body axes aligned with this frame, co-rotating with it (replaces the
+% fixed initial state of eqs. (55)-(56)).
+p.init = struct('sky', -p.target.sky, 'phase0', 0, 'rate', 2*pi/86400, ...
+                'nulling', 25, 'imaging', 150, 'height', 300, 'point', 1);
+p = deriveFormations(p);
 
 %% Spacecraft, Sec. 4.3
 p.m    = 4000;                          % [kg]
@@ -50,11 +59,7 @@ p.B = [p.Bf; p.Btau];                   % (46)
 p.Ssun = 1361; p.Cr = 1.5; p.Asrp = 20; p.clight = 299792458;
 p.beta = p.Ssun*p.Cr*p.Asrp*p.dse^2/(p.clight*p.m);
 
-%% Initial conditions and arrival, eqs. (55)-(56)
-p.ic.Rfi  = rot2(pi/6);                 % Ry(pi/6)
-p.ic.wfi  = 1e-4*[1; -1; 1];            % [1/s]
-p.ic.rpi  = [100; -50; 20];             % [m]
-p.ic.vpi  = [0.01; -0.005; 0];          % [m/s]
+%% Arrival
 p.tf     = 4*3600;                      % arrival deadline [s]
 p.tauMin = 1;                           % numerical lower bound on tau [s]
 
