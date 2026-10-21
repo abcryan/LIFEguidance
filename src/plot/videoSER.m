@@ -47,7 +47,7 @@ legend(ax, [hP, hT, hf.dots, h0.dots], {'spacecraft path', 'target path', 'virtu
        'Location', 'southoutside', ...
        'Orientation', 'horizontal', 'AutoUpdate', 'off');
 
-vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = 75;
+vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = sched.quality;
 open(vw); cleanup = onCleanup(@() close(vw));
 warnState = warning('off', 'MATLAB:hg:DiceyTransformMatrix');
 restore = onCleanup(@() warning(warnState));
@@ -71,6 +71,6 @@ for f = 1:numel(sched.t)
     end
     setFormationPose(hf, fr.Rbf);
     updatePanels(pan, t, T, sched.label, x, p);
-    writeVideo(vw, grabFrame(fig));
+    writeVideo(vw, grabFrame(fig, sched.height));
 end
 end

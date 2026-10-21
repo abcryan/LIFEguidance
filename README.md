@@ -15,7 +15,7 @@ IPOPT is downloaded into `external/` (git-ignored) by `setupCasadi.m`.
 
 ```matlab
 main                 % solve, validate, save results/ and figures (~45 s)
-makeVideo            % render the two videos from the saved run (~1 min)
+makeVideo            % render the two videos from the saved run (~2 min)
 runtests('tests')    % model consistency checks (~5 s)
 ```
 
@@ -111,7 +111,7 @@ with N = 200, all checks pass except the attitude check (60), which gives
 - **Videos** (written by `makeVideo`, drawn live in a MATLAB figure; off-screen in `-batch` mode)
   - `video_SER.mp4` and `video_formation.mp4` share the same frame times.
   - Both show the target formation pyramid (80 × 480 m, apex at 960 m) in red. For reference only, they also show the initial formation (25 × 150 m, apex 300 m) in grey, fixed at its t = 0 pose for the whole video. The view is zoomed on the spacecraft trajectory and the target point, so the pyramid edges are clipped at the box and show where it continues.
-  - 1280×720 at 15 fps, 30 s each, at a constant playback speed (×480). The plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
+  - 1920×1080 at 30 fps and MPEG-4 quality 95, 30 s each, at a constant playback speed (×480). These settings are at the top of `makeVideo.m`. The plumes show the peak thrust since the previous frame, so burns shorter than one frame step (32 s) are not skipped.
   - Next to the 3D view, three time histories with a moving cursor, as in the Malladi animation:
     - the eigenaxis attitude error θ_i;
     - the relative position r^f_pi;

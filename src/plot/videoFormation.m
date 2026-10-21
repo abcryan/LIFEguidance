@@ -40,7 +40,7 @@ xlabel(ax, 'x_f (m)'); ylabel(ax, 'y_f (m)'); zlabel(ax, 'z_f (m)');
 title(ax, {'formation axes at origin; body axes red/green/blue', ...
     sprintf('spacecraft drawn x%d, plume %g m at T_{max}', mag, plumeLen*mag)}, 'FontSize', 9);
 
-vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = 75;
+vw = VideoWriter(file, 'MPEG-4'); vw.FrameRate = sched.fps; vw.Quality = sched.quality;
 open(vw); cleanup = onCleanup(@() close(vw));
 warnState = warning('off', 'MATLAB:hg:DiceyTransformMatrix');
 restore = onCleanup(@() warning(warnState));
@@ -53,6 +53,6 @@ for f = 1:numel(sched.t)
     upto = res.prop.t <= t;
     set(trail, 'XData', [rf(1,upto) pos(1)], 'YData', [rf(2,upto) pos(2)], 'ZData', [rf(3,upto) pos(3)]);
     updatePanels(pan, t, T, sched.label, xs, p);
-    writeVideo(vw, grabFrame(fig));
+    writeVideo(vw, grabFrame(fig, sched.height));
 end
 end
