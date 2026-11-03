@@ -1,8 +1,9 @@
 function figs = plotResults(res, p, outDir)
-%PLOTRESULTS Static figures of Sec. 4.4, saved as PNG to outDir and left
+%PLOTRESULTS Static figures of Sec. 5.3, saved as PNG to outDir and left
 %   open (physical time throughout).
 list = {
     'tracking_errors',     @() plotTracking(res, p)
+    'sun_angle',           @() plotSunAngle(res, p)
     'control_wrench',      @() plotWrench(res, p)
     'thrust_histories',    @() plotThrusters(res, p)
     'thrust_burn_zoom',    @() plotThrusterBurns(res, p)

@@ -15,9 +15,9 @@ classdef FormationTest < matlab.unittest.TestCase
     end
 
     methods (Test)
-        function defaultTargetIsEq53(tc)
+        function e2TargetIsEq53(tc)
             % sky = e2, phase 0, 24 h spin reproduces Rx(-pi/2) Rz(ws t)
-            p = tc.p;
+            p = e2Setup(tc.p);
             tc.verifyEqual(skyBasis([0; 1; 0]), rot1(-pi/2), 'AbsTol', 1e-15);
             for t = [0 5000 14400]
                 tc.verifyEqual(frames(t, p).Rcf, rot1(-pi/2)*rot3(2*pi/86400*t), 'AbsTol', 1e-14);
@@ -63,8 +63,18 @@ classdef FormationTest < matlab.unittest.TestCase
             end
         end
 
-        function initialFormationPointsOpposite(tc)
+        function defaultSkiesInFieldOfRegard(tc)
+            % Default (Problem 2 scenario): both skies 80 deg from the
+            % anti-Sun direction +x_c, on either side of it (160 deg slew)
             p = tc.p;
+            zT = formationAttitude(p.target, 0)*[0; 0; 1];
+            z0 = formationAttitude(p.init, 0)*[0; 0; 1];
+            tc.verifyEqual(acosd([zT(1), z0(1)]), [80 80], 'AbsTol', 1e-12);
+            tc.verifyEqual(acosd(zT'*z0), 160, 'AbsTol', 1e-10);
+        end
+
+        function initialFormationPointsOpposite(tc)
+            p = e2Setup(tc.p);
             tc.verifyEqual(formationAttitude(p.init, 0)*[0; 0; 1], ...
                            -formationAttitude(p.target, 0)*[0; 0; 1], 'AbsTol', 1e-15);
         end
@@ -87,9 +97,9 @@ classdef FormationTest < matlab.unittest.TestCase
             end
         end
 
-        function initialStateDefaultNumbers(tc)
-            % Default: corner 1 of the initial rectangle, 180 deg about y_f
-            p = tc.p;
+        function initialStateE2Numbers(tc)
+            % e2 setup: corner 1 of the initial rectangle, 180 deg about y_f
+            p = e2Setup(tc.p);
             x0 = initialRelativeState(p);
             [~, th] = eigenAngle(x0(1:4));
             tc.verifyEqual(th, pi, 'AbsTol', 1e-12);
@@ -98,6 +108,12 @@ classdef FormationTest < matlab.unittest.TestCase
             tc.verifyEqual(x0(11:13), cross([0; 0; -2*p.ws], [-12.5; 75; 0]), 'AbsTol', 1e-15);
         end
     end
+end
+
+function p = e2Setup(p)
+%E2SETUP The earlier default: target sky e2 (eq. (53)), initial sky -e2.
+p.target.sky = [0; 1; 0]; p.init.sky = [0; -1; 0];
+p = deriveFormations(p);
 end
 
 function verifyInitialState(tc, p)

@@ -31,13 +31,18 @@ p.obliquity = deg2rad(23.43928);        % epsilon
 % the corners (+,+), (-,+), (-,-), (+,-) in (x, y), point 5 is the apex.
 % Target formation (the spacecraft must reach p.target.point of it). With
 % sky = e2, phase0 = 0 and a 24 h spin it is eq. (53).
-p.target = struct('sky', [0; 1; 0], 'phase0', 0, 'rate', 2*pi/86400, ...
+% CHOICE: the target and initial skies lie 80 deg from the anti-Sun
+% direction (+x_c at t = 0) on either side of it, a 160 deg slew. Both ends
+% are inside the field of regard of Problem 2 (the default +-e2 sit at
+% 90 deg, outside it), and the unconstrained optimum (Problem 1) swings z^i
+% to ~146 deg from anti-Sun, so the Sun-angle constraint matters.
+p.target = struct('sky', [cosd(80); sind(80); 0], 'phase0', 0, 'rate', 2*pi/86400, ...
                   'nulling', 80, 'imaging', 480, 'height', 960, 'point', 1);
 % Initial formation: exists only at t = 0, shares the target origin, and
 % defines the initial condition: the spacecraft sits at p.init.point with
 % body axes aligned with this frame, co-rotating with it (replaces the
 % fixed initial state of eqs. (55)-(56)).
-p.init = struct('sky', -p.target.sky, 'phase0', 0, 'rate', 2*pi/86400, ...
+p.init = struct('sky', [cosd(80); -sind(80); 0], 'phase0', 0, 'rate', 2*pi/86400, ...
                 'nulling', 25, 'imaging', 150, 'height', 300, 'point', 1);
 p = deriveFormations(p);
 
@@ -58,6 +63,16 @@ p.B = [p.Bf; p.Btau];                   % (46)
 %% Solar radiation pressure, eq. (57)
 p.Ssun = 1361; p.Cr = 1.5; p.Asrp = 20; p.clight = 299792458;
 p.beta = p.Ssun*p.Cr*p.Asrp*p.dse^2/(p.clight*p.m);
+
+%% Sun-angle constraint of Problem 2, eqs. (44)-(45)
+% The angle theta_i between the body vector n^i and the Sun direction must
+% stay in [thetaMin, thetaMax]: the anti-Sun field of regard [50, 85] deg
+% (the document's 45 deg is a typo, corrected by the author).
+p.sun.n        = [0; 0; 1];             % n^i = e3
+p.sun.thetaMin = deg2rad(95);           % anti-Sun angle <= 85 deg
+p.sun.thetaMax = deg2rad(130);          % anti-Sun angle >= 50 deg
+% Problem 2 verification: max violation along the propagation (Sec. 5.2)
+p.gate.sunDeg  = 0.01;                  % [deg]
 
 %% Arrival
 p.tf     = 4*3600;                      % arrival deadline [s]

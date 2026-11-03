@@ -1,7 +1,11 @@
-function res = validateSolution(sol, info, ref, p)
-%VALIDATESOLUTION Independent checks of the optimized solution.
+function res = validateSolution(sol, info, ref, p, problem)
+%VALIDATESOLUTION Independent checks of the optimized solution of
+%   Problem 1 or 2 (default 1). The Sun angle (45) is evaluated for both;
+%   only Problem 2 must satisfy it to be accepted.
 %   All reported errors and all animations are based on the forward
 %   propagation (propagateRelative), not on the collocation trajectory.
+if nargin < 5, problem = 1; end
+res.problem = problem;
 res.sol = sol;
 res.info = info;
 
@@ -58,5 +62,8 @@ solFull = ode89(@(~, z) cr3bpNormalized(z, p.eta), [0, p.Om*haloT(end)], p.haloI
 res.haloFull = deval(solFull, p.Om*haloT);        % normalized
 res.refFitErr = ref.fitErr;
 
-res.accepted = info.success && res.term.passAll;
+% Sun angle (45) along the propagation and at the collocation points
+res.sun = sunAngle(res, ref, p);
+
+res.accepted = info.success && res.term.passAll && (problem < 2 || res.sun.pass);
 end

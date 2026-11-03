@@ -55,7 +55,7 @@ classdef ModelTest < matlab.unittest.TestCase
             tc.verifyEqual(fr.Rcb*[1; 0; 0], [1; 0; 0], 'AbsTol', 1e-15);
             % z_b on the ecliptic pole in equatorial axes
             tc.verifyEqual(fr.Rcb(:,3), [0; -sin(p.obliquity); cos(p.obliquity)], 'AbsTol', 1e-15);
-            tc.verifyEqual(fr.Rcf*[0; 0; 1], [0; 1; 0], 'AbsTol', 1e-15);   % s^c = e2
+            tc.verifyEqual(fr.Rcf*[0; 0; 1], p.target.sky, 'AbsTol', 1e-15);   % z_f = sky
             for t = [0 3000 14400]
                 fr = frames(t, p);
                 tc.verifyLessThan(norm(fr.Rbf'*fr.Rbf - eye(3)), 1e-14);
@@ -110,6 +110,26 @@ classdef ModelTest < matlab.unittest.TestCase
                 a = full(F(ts, xs, Ts, rs)); b = relativeDynamics(ts, xs, Ts, rs, p);
                 tc.verifyLessThan(norm(a - b), 1e-14*norm(b));
             end
+        end
+
+        function sunCosineChecks(tc)
+            % Eq. (44): CasADi against double; at t = 0 the formation axis
+            % z_f lies 80 deg from anti-Sun (+x_c, up to the halo offset);
+            % formation-centre against spacecraft Sun direction ~1e-9 rad
+            p = tc.p; rng(6);
+            t = casadi.SX.sym('t'); q = casadi.SX.sym('q', 4); r = casadi.SX.sym('r', 3);
+            S = casadi.Function('S', {t, q, r}, {sunCosine(t, q, r, p)});
+            for k = 1:20
+                [ts, xs, ~, rs] = randomSample(p);
+                a = full(S(ts, xs(1:4), rs)); b = sunCosine(ts, xs(1:4), rs, p);
+                tc.verifyLessThan(abs(a - b), 1e-14);
+            end
+            rbf = p.haloIC(1:3)*p.dse;
+            anti = 180 - acosd(sunCosine(0, [1; 0; 0; 0], rbf, p));
+            tc.verifyEqual(anti, 80, 'AbsTol', 0.1);
+            rbi = rbf + frames(0, p).Rbf*[300; -200; 900];
+            d = acos(sunCosine(0, [1; 0; 0; 0], rbi, p)) - acos(sunCosine(0, [1; 0; 0; 0], rbf, p));
+            tc.verifyLessThan(abs(d), 1e-8);
         end
 
         function terminalAttitudeIsEquilibrium(tc)
