@@ -97,6 +97,24 @@ classdef FormationTest < matlab.unittest.TestCase
             end
         end
 
+        function shiftPhaseMatchesShiftedTarget(tc)
+            % Eq. (47): the closed-form phase shift used in the Problem 3
+            % NLP equals the initial state for a target formation advanced
+            % in phase, for all points and random shifts
+            p0 = tc.p; rng(13);
+            for k = 1:5
+                p0.init.point = k;
+                x0 = initialRelativeState(p0);
+                for dphi = [2*pi*rand(1, 3) - pi, pi]
+                    ps = p0; ps.target.phase0 = p0.target.phase0 + dphi;
+                    xs = initialRelativeState(ps);
+                    xc = shiftPhase(x0, dphi, p0);
+                    if xc(1)*xs(1) < 0, xc(1:4) = -xc(1:4); end   % q ~ -q
+                    tc.verifyEqual(xc, xs, 'AbsTol', 1e-12);
+                end
+            end
+        end
+
         function initialStateE2Numbers(tc)
             % e2 setup: corner 1 of the initial rectangle, 180 deg about y_f
             p = e2Setup(tc.p);

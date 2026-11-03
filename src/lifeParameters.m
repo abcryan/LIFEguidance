@@ -85,6 +85,13 @@ p.tauMin = 1;                           % numerical lower bound on tau [s]
 p.ocp.N      = 400;
 p.ocp.d      = 3;                       % Radau collocation points
 p.ocp.uGuess = 0.01;                    % T/Tmax initial guess
+% Problem 3 multi-start arrival phases, Sec. 5.2: -pi + m*pi/4, m = 0..7
+p.ocp.p3Starts = -pi + (0:7)*pi/4;
+% CHOICE: wall-time cap per Problem 3 solve [s] (a normal start converges
+% in 15-30 s; the start at -pi diverged in IPOPT's restoration phase with
+% MUMPS reallocating memory, > 40 min uncapped). A capped start counts as
+% not converged and is reported; the best converged start is kept.
+p.ocp.p3MaxWallTime = 120;
 % State scaling [q; w; r; v]: quaternion unscaled, 1e-3 1/s, 100 m, 0.1 m/s
 p.ocp.xScale = [1; 1; 1; 1; 1e-3*ones(3,1); 100*ones(3,1); 0.1*ones(3,1)];
 p.ocp.Jscale = 100;                     % CHOICE: objective scale [N s]

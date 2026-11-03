@@ -1,4 +1,4 @@
-%% Render the comparison animation of Problems 1 and 2 from a saved run of main.m
+%% Render the comparison animation of Problems 1-3 from a saved run of main.m
 %  (and, optionally, the two per-problem animations of Sec. 5.3)
 projectRoot = fileparts(mfilename('fullpath'));
 addpath(genpath(fullfile(projectRoot, 'src')));
@@ -11,14 +11,17 @@ video.quality    = 95;                 % MPEG-4 quality, 0-100
 video.perProblem = false;              % also the SER and formation videos per problem
 
 resultsDir = fullfile(projectRoot, 'results');
-R = {};
-for k = 1:2
-    data = load(fullfile(resultsDir, sprintf('problem%d', k), 'solution.mat'), 'res', 'p');
-    R{k} = data.res; %#ok<SAGROW>
-end
-p = data.p;
 pNow = lifeParameters();
-p.viz = pNow.viz;                      % drawing settings always current
+R = {};
+for k = 1:3                            % every saved problem, with its own p
+    f = fullfile(resultsDir, sprintf('problem%d', k), 'solution.mat');
+    if ~isfile(f), continue, end
+    data = load(f, 'res', 'p');
+    data.p.viz = pNow.viz;             % drawing settings always current
+    data.res.p = data.p;
+    R{end + 1} = data.res; %#ok<SAGROW>
+end
+p = pNow;                              % shared settings (Sun bounds, gates)
 [~, iLong] = max(cellfun(@(r) r.sol.tau, R));
 sched = videoSchedule(R{iLong}, 'fps', video.fps, 'duration', video.duration);
 sched.height = video.height;
@@ -32,8 +35,8 @@ if video.perProblem
     for k = 1:numel(R)
         sk = videoSchedule(R{k}, 'fps', video.fps, 'duration', video.duration);
         sk.height = video.height; sk.quality = video.quality;
-        dirK = fullfile(resultsDir, sprintf('problem%d', k));
-        videoSER(R{k}, p, sk, fullfile(dirK, 'video_SER.mp4'));
-        videoFormation(R{k}, p, sk, fullfile(dirK, 'video_formation.mp4'));
+        dirK = fullfile(resultsDir, sprintf('problem%d', R{k}.problem));
+        videoSER(R{k}, R{k}.p, sk, fullfile(dirK, 'video_SER.mp4'));
+        videoFormation(R{k}, R{k}.p, sk, fullfile(dirK, 'video_formation.mp4'));
     end
 end

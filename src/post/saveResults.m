@@ -14,6 +14,9 @@ s.N = res.sol.N;
 s.tau_s = res.sol.tau;
 s.tau_at_upper_bound = res.info.tauAtUpper;
 s.tau_bound_multiplier = res.info.tauMultiplier;
+s.phi_tau_deg = rad2deg(res.sol.phiTau);
+s.phi_tau_free = res.problem >= 3;
+s.phase0_deg = rad2deg(res.sol.phase0);
 s.total_impulse_Ns = res.J;
 s.propellant_kg = res.dm;
 s.max_thrust_N = res.maxThrust;
@@ -36,6 +39,10 @@ s.sun = struct('anti_sun_angle_min_deg', min(res.sun.antiDeg), ...
     'collocation_max_violation_deg', res.sun.collMaxViolDeg, ...
     'formation_centre_error_rad', res.sun.centreErr, ...
     'active_bound', res.sun.activeBound, 'active_points', {res.sun.active});
+if isfield(res, 'multistart') && ~isempty(res.multistart)
+    s.multistart = res.multistart;
+    writeText(fullfile(outDir, 'multistart.json'), jsonencode(res.multistart, 'PrettyPrint', true));
+end
 writeText(fullfile(outDir, 'summary.json'), jsonencode(s, 'PrettyPrint', true));
 
 settings = rmfield(p, {'thr'});

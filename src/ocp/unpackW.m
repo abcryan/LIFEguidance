@@ -13,4 +13,13 @@ sol.U  = reshape(w(ocp.ix.U), ocp.nu, []);
 sol.T  = p.Tmax*sol.U;                       % [N], 20xN
 sol.J  = sum(sol.h.*sum(sol.T, 1));          % total impulse [N s]
 sol.w  = w;
+% Arrival phase phiTau and formation phase at t = 0: decision variable in
+% Problem 3, prescribed (phi(0) = p.target.phase0) otherwise
+if isempty(ocp.ix.phi)
+    sol.phase0 = p.target.phase0;
+    sol.phiTau = sol.phase0 + p.target.rate*sol.tau;
+else
+    sol.phiTau = pi*w(ocp.ix.phi);
+    sol.phase0 = sol.phiTau - p.target.rate*sol.tau;
+end
 end

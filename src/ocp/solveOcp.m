@@ -18,10 +18,13 @@ sol.lamX = full(res.lam_x);
 lamG = full(res.lam_g);
 sol.lamSun = lamG(ocp.iSun);            % multipliers of (45), Problem 2
 g = full(res.g);
-info.maxDefect = max(abs(g));
+eq = ocp.lbg == ocp.ubg;                % collocation, continuity, boundary
+info.maxDefect = max(abs(g(eq) - ocp.lbg(eq)));
 info.objScaled = full(res.f);
 % Multiplier of the arrival-time bound (positive: upper bound active)
 info.tauMultiplier = sol.lamX(ocp.ix.tau);
 info.tauAtUpper = abs(sol.tau - p.tf) < 1e-6*p.tf;
 info.boundViolation = max([0; -sol.U(:); sol.U(:) - 1])*p.Tmax;
+% Problem 3: arrival phase at its bound -pi or pi (55)
+info.phiAtBound = ~isempty(ocp.ix.phi) && abs(abs(sol.phiTau) - pi) < 1e-6;
 end

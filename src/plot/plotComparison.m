@@ -105,29 +105,46 @@ title(tl, 'Impulse');
 end
 
 function fig = trajectoryFig(R, p)
+% In the prescribed formation frame (that of p): a solution with formation
+% phase phase0_i is rotated by Rz(phase0_i - p.target.phase0) into it, so
+% the target points of different arrival phases appear on their circle
+% about z_f (Sec. 5.3, Problem 3)
 s = plotStyle();
 fig = newFigure('trajCompare', [50 50 1100 850]);
 ax = axes(fig); hold(ax, 'on'); grid(ax, 'on');
-h = gobjects(1, numel(R));
-for i = 1:numel(R)
+nR = numel(R); h = gobjects(1, nR); hp = gobjects(1, nR); lblP = cell(1, nR);
+th = linspace(0, 2*pi, 181); rr = norm(p.rfp(1:2));
+plot3(ax, rr*cos(th), rr*sin(th), p.rfp(3)*ones(size(th)), ':', 'Color', [0.5 0.5 0.5], ...
+      'HandleVisibility', 'off');
+for i = 1:nR
     r = R{i}; c = s.prob(r.problem,:);
-    rf = r.prop.x(8:10,:) + p.rfp;
+    Rz = rot3(r.p.target.phase0 - p.target.phase0);
+    rf = Rz*(r.prop.x(8:10,:) + p.rfp);
     h(i) = plot3(ax, rf(1,:), rf(2,:), rf(3,:), 'Color', c, 'LineWidth', 1.8);
     k = round(linspace(1, numel(r.prop.t), 13));
     Z = zeros(3, numel(k));
     for j = 1:numel(k)
-        Z(:,j) = quatToDcm(r.prop.x(1:4,k(j)))*p.sun.n;
+        Z(:,j) = Rz*quatToDcm(r.prop.x(1:4,k(j)))*p.sun.n;
     end
-    Z = 0.15*norm(rf(:,1) - p.rfp)*Z;           % arrow length [m]
+    Z = 0.12*rr*Z;                              % arrow length [m]
     quiver3(ax, rf(1,k), rf(2,k), rf(3,k), Z(1,:), Z(2,:), Z(3,:), 0, ...
             'Color', c, 'LineWidth', 1.2, 'MaxHeadSize', 0.4, 'HandleVisibility', 'off');
+    tp = Rz*p.rfp;
+    hp(i) = plot3(ax, tp(1), tp(2), tp(3), 'o', 'MarkerSize', 11, 'MarkerFaceColor', c, 'Color', 'k');
+    lblP{i} = sprintf('target point, Problem %d (\\phi_\\tau = %.1f\\circ)', r.problem, ...
+                      rad2deg(angle(exp(1i*r.sol.phiTau))));
 end
 hs = plot3(ax, rf(1,1), rf(2,1), rf(3,1), 'ks', 'MarkerFaceColor', 'g', 'MarkerSize', 9);
-hp = plot3(ax, p.rfp(1), p.rfp(2), p.rfp(3), 'o', 'MarkerSize', 10, 'MarkerFaceColor', [0.2 0.4 0.9], 'Color', 'k');
+cols = [0.85 0.1 0.1; 0.1 0.6 0.1; 0.1 0.2 0.9];
+for j = 1:3
+    e = 0.3*rr*((1:3)' == j);
+    plot3(ax, [0 e(1)], [0 e(2)], [0 e(3)], 'Color', cols(j,:), 'LineWidth', 2, 'HandleVisibility', 'off');
+end
 axis(ax, 'equal'); view(ax, 40, 22);
 xlabel(ax, 'x_f (m)'); ylabel(ax, 'y_f (m)'); zlabel(ax, 'z_f (m)');
 legend(ax, [h, hs, hp], ...
-       [arrayfun(@(i) sprintf('Problem %d', R{i}.problem), 1:numel(R), 'UniformOutput', false), ...
-        {'start', 'target point p'}], 'Location', 'northeast');
-title(ax, 'Approach in the formation frame O^f; arrows: body axis z^i every \tau/12', 'FontWeight', 'normal');
+       [arrayfun(@(i) sprintf('Problem %d', R{i}.problem), 1:nR, 'UniformOutput', false), ...
+        {'start'}, lblP], 'Location', 'southoutside', 'NumColumns', 2);
+title(ax, {'Approach in the prescribed formation frame O^f (\phi(0) = \phi_0); dotted: circle of the target point', ...
+    'arrows: body axis z^i every \tau/12; formation axes at the origin'}, 'FontWeight', 'normal');
 end

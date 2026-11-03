@@ -112,6 +112,27 @@ classdef ModelTest < matlab.unittest.TestCase
             end
         end
 
+        function symbolicPhaseEqualsShiftedFormation(tc)
+            % Problem 3 NLP: dynamics and Sun cosine with the formation
+            % phase as a CasADi argument equal the double evaluation with
+            % a numerically shifted p.target.phase0
+            p = tc.p; rng(7);
+            t = casadi.SX.sym('t'); x = casadi.SX.sym('x', 13); T = casadi.SX.sym('T', 20);
+            r = casadi.SX.sym('r', 3); ph = casadi.SX.sym('ph');
+            pPh = p; pPh.target.phase0 = ph;
+            F = casadi.Function('F', {t, x, T, r, ph}, ...
+                {relativeDynamics(t, x, T, r, pPh), sunCosine(t, x(1:4), r, pPh)});
+            for k = 1:20
+                [ts, xs, Ts, rs] = randomSample(p);
+                phs = 2*pi*rand - pi;
+                pn = p; pn.target.phase0 = phs;
+                [a, sa] = F(ts, xs, Ts, rs, phs);
+                b = relativeDynamics(ts, xs, Ts, rs, pn);
+                tc.verifyLessThan(norm(full(a) - b), 1e-14*norm(b));
+                tc.verifyLessThan(abs(full(sa) - sunCosine(ts, xs(1:4), rs, pn)), 1e-14);
+            end
+        end
+
         function sunCosineChecks(tc)
             % Eq. (44): CasADi against double; at t = 0 the formation axis
             % z_f lies 80 deg from anti-Sun (+x_c, up to the halo offset);

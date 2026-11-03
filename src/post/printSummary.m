@@ -8,6 +8,15 @@ fprintf('Solver status        : %s (%d iterations, %.1f s)\n', res.info.status, 
 fprintf('Arrival time tau     : %.3f s (upper bound tf = %g s active: %d, multiplier %.3e)\n', ...
         res.sol.tau, p.tf, res.info.tauAtUpper, res.info.tauMultiplier);
 fprintf('Total impulse        : %.4f N s  (dm = %.4f kg at Isp %g s)\n', res.J, res.dm, p.Isp);
+if res.problem >= 3
+    bnd = '';
+    if res.info.phiAtBound, bnd = '; at its bound'; end
+    fprintf('Arrival phase phiTau : %.3f deg (free%s), formation phase at t = 0: %.3f deg\n', ...
+            rad2deg(res.sol.phiTau), bnd, rad2deg(res.sol.phase0));
+else
+    fprintf('Arrival phase phiTau : %.3f deg (prescribed, phi(0) = %.3f deg)\n', ...
+            rad2deg(res.sol.phiTau), rad2deg(res.sol.phase0));
+end
 fprintf('Max thrust           : %.4f N (Tmax %g N), bound violation %.2e N\n', ...
         res.maxThrust, p.Tmax, res.boundViolation);
 fprintf('Terminal |r|         : %.3e m     (<= %g)  %s\n', t.r, p.gate.r, pf(t.pass.r));
