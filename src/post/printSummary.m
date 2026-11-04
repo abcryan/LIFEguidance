@@ -21,7 +21,7 @@ fprintf('Max thrust           : %.4f N (Tmax %g N), bound violation %.2e N\n', .
         res.maxThrust, p.Tmax, res.boundViolation);
 fprintf('Terminal |r|         : %.3e m     (<= %g)  %s\n', t.r, p.gate.r, pf(t.pass.r));
 fprintf('Terminal |v|         : %.3e m/s   (<= %g)  %s\n', t.v, p.gate.v, pf(t.pass.v));
-fprintf('Terminal angle (60)  : %.3e rad   (<= %g)  %s   [atan2 form %.3e]\n', ...
+fprintf('Terminal angle xi    : %.3e rad   (<= %g)  %s   [atan2 form %.3e]\n', ...
         t.thetaAcos, p.gate.theta, pf(t.pass.theta), t.thetaAtan);
 fprintf('Terminal |w|         : %.3e 1/s   (<= %g)  %s\n', t.w, p.gate.w, pf(t.pass.w));
 fprintf('Prop. vs collocation : max |dr| %.2e m, |dv| %.2e m/s, dth %.2e rad, |dw| %.2e 1/s\n', ...
@@ -31,7 +31,7 @@ fprintf('Absolute-model check : max |dr| %.2e m, |dv| %.2e m/s, dth %.2e rad, |d
 fprintf('max ||q|-1|          : collocation %.2e, propagation %.2e; ||R''R-I|| %.2e\n', ...
         res.qNormColl, res.qNormProp, res.RorthProp);
 sn = res.sun;
-fprintf('Sun angle (45)       : anti-Sun angle of n^i in [%.2f, %.2f] deg (band [%.0f, %.0f]), max violation %.3f deg (<= %g)  %s\n', ...
+fprintf('Sun angle (48)       : anti-Sun angle of n^i in [%.2f, %.2f] deg (band [%.0f, %.0f]), max violation %.3f deg (<= %g)  %s\n', ...
         min(sn.antiDeg), max(sn.antiDeg), 180 - rad2deg(p.sun.thetaMax), 180 - rad2deg(p.sun.thetaMin), ...
         sn.maxViolDeg, p.gate.sunDeg, sunStatus(sn.pass, res.problem));
 fprintf('                       time outside the band (> gate) %.0f s, at collocation points %.2e deg, formation-centre error %.1e rad\n', ...
@@ -61,7 +61,7 @@ end
 end
 
 function s = sunStatus(pass, problem)
-%SUNSTATUS Gate result for Problem 2; Problem 1 does not impose (45).
+%SUNSTATUS Gate result for Problem 2; Problem 1 does not impose (48).
 if problem >= 2, s = char(ifelse(pass));
 elseif pass, s = 'within (not imposed)';
 else, s = 'violated (not imposed)';

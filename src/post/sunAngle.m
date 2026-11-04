@@ -1,5 +1,5 @@
 function sun = sunAngle(res, ref, p)
-%SUNANGLE Sun angle theta_i of n^i, eqs. (44)-(45), for any problem.
+%SUNANGLE Sun angle theta_i of n^i, eqs. (47)-(48), for any problem.
 %   Along the propagation (res.prop) with the exact Sun direction from the
 %   spacecraft: theta_i, the anti-Sun angle 180 - theta_i, the bound
 %   violation and the intervals outside [thetaMin, thetaMax] by more than
@@ -34,7 +34,7 @@ sun.pass = sun.maxViolDeg <= p.gate.sunDeg;
 
 % NLP form at the collocation points
 sol = res.sol;
-sigN = sunCosine(sol.tColl, sol.XC(1:4,:), chebEvalRef(ref, sol.tColl), p);
+sigN = sunCosine(sol.tColl, sol.XC(1:4,:), chebEvalRef(ref, sol.tColl), pointingParams(p));
 [~, sun.collMaxViolDeg] = violationDeg(acos(min(max(sigN, -1), 1)), p);
 
 % Active constraint (Problem 2): collocation points within the gate of a

@@ -24,6 +24,13 @@ classdef FormationTest < matlab.unittest.TestCase
             end
         end
 
+        function skyBasisIsEq66(tc)
+            % Current document, eq. (66): R^c_* = Rz(-25 deg) Rx(-pi/2) for
+            % z_* = [cos 65, sin 65, 0]
+            tc.verifyEqual(skyBasis([cosd(65); sind(65); 0]), ...
+                rot3(deg2rad(-25))*rot1(-pi/2), 'AbsTol', 1e-15);
+        end
+
         function skyBasisIsRotationOntoSky(tc)
             rng(11);
             for k = 1:50
@@ -97,20 +104,22 @@ classdef FormationTest < matlab.unittest.TestCase
             end
         end
 
-        function shiftPhaseMatchesShiftedTarget(tc)
-            % Eq. (47): the closed-form phase shift used in the Problem 3
-            % NLP equals the initial state for a target formation advanced
-            % in phase, for all points and random shifts
-            p0 = tc.p; rng(13);
-            for k = 1:5
-                p0.init.point = k;
-                x0 = initialRelativeState(p0);
-                for dphi = [2*pi*rand(1, 3) - pi, pi]
-                    ps = p0; ps.target.phase0 = p0.target.phase0 + dphi;
-                    xs = initialRelativeState(ps);
-                    xc = shiftPhase(x0, dphi, p0);
-                    if xc(1)*xs(1) < 0, xc(1:4) = -xc(1:4); end   % q ~ -q
-                    tc.verifyEqual(xc, xs, 'AbsTol', 1e-12);
+        function targetStateIsFormationRest(tc)
+            % Eq. (39): x^tgt(phiTau) in the pointing frame is zero
+            % target-relative error in the formation frame at t = tau, for
+            % random phases and arrival times, and the terminal attitude
+            % rows of Sec. 5.2 vanish for both +-q^tgt
+            p = tc.p; rng(13);
+            for k = 1:10
+                phi = 2*pi*rand - pi; tau = p.tf*rand;
+                pk = p; pk.target.phase0 = phi - p.target.rate*tau;
+                xt = targetState(phi, p);
+                xf = toFormation(tau, xt, pk);
+                tc.verifyEqual(abs(xf(1)), 1, 'AbsTol', 1e-15);
+                tc.verifyEqual(xf(2:13), zeros(12, 1), 'AbsTol', 1e-12);
+                for q = [xt(1:4), -xt(1:4)]
+                    g = [q(2:3); q(4)*cos(phi/2) - q(1)*sin(phi/2)];
+                    tc.verifyEqual(g, zeros(3, 1), 'AbsTol', 1e-15);
                 end
             end
         end
@@ -118,7 +127,7 @@ classdef FormationTest < matlab.unittest.TestCase
         function initialStateE2Numbers(tc)
             % e2 setup: corner 1 of the initial rectangle, 180 deg about y_f
             p = e2Setup(tc.p);
-            x0 = initialRelativeState(p);
+            x0 = toFormation(0, initialRelativeState(p), p);   % O^f = O* at t = 0
             [~, th] = eigenAngle(x0(1:4));
             tc.verifyEqual(th, pi, 'AbsTol', 1e-12);
             tc.verifyEqual(x0(8:10) + p.rfp, [-12.5; 75; 0], 'AbsTol', 1e-12);
@@ -138,7 +147,7 @@ function verifyInitialState(tc, p)
 x0 = initialRelativeState(p);
 tc.verifyEqual(norm(x0(1:4)), 1, 'AbsTol', 1e-15);
 vf0 = p.haloIC(4:6)*p.dse*p.Om;
-z = relToAbs(0, x0, zeros(3, 1), vf0, p);        % absolute state, shared origin
+z = relToAbs(0, x0, zeros(3, 1), vf0, pointingParams(p));   % absolute, shared origin
 Rcb = rot1(p.obliquity);                          % R^c_b(0)
 Rc0 = formationAttitude(p.init, 0);
 P = pyramidPoints(p.init);

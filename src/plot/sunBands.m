@@ -1,5 +1,5 @@
 function sunBands(ax, p, tLim, intervals, s)
-%SUNBANDS Field of regard of eq. (45) as a shaded band of anti-Sun angles
+%SUNBANDS Field of regard of eq. (48) as a shaded band of anti-Sun angles
 %   over tLim, its bounds, and red shading of the intervals outside it.
 lo = 180 - rad2deg(p.sun.thetaMax); hi = 180 - rad2deg(p.sun.thetaMin);
 for b = 1:numel(intervals)

@@ -1,7 +1,7 @@
 function drawSky(ax, p)
 %DRAWSKY Sky plot of the direction of n^i about the Sun line: radius =
 %   anti-Sun angle (deg, anti-Sun at the centre, Sun on the outer circle),
-%   azimuth from ecliptic north (up). The field of regard of eq. (45) is
+%   azimuth from ecliptic north (up). The field of regard of eq. (48) is
 %   the shaded annulus. Map directions with skyXY.
 s = plotStyle();
 hold(ax, 'on');

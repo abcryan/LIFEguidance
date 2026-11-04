@@ -7,11 +7,14 @@ formation near Sun–Earth L2 within t_f = 4 h, with minimum total impulse and a
 free arrival time τ.
 
 - **Problem 1** (weakly constrained, fixed phase): only the thrust and arrival-time bounds.
-- **Problem 2** (attitude constrained, fixed phase): Problem 1 plus the Sun-angle path constraint (45). The body axis z^i must stay 50°–85° from the anti-Sun direction (θ_i ∈ [95°, 130°] from the Sun).
-- **Problem 3** (attitude constrained, free phase): Problem 2 plus the arrival phase φτ of the formation's rotation about the line of sight as a decision variable, eqs. (46)–(55).
+- **Problem 2** (attitude constrained, fixed phase): Problem 1 plus the Sun-angle path constraint (48). The body axis z^i must stay 50°–85° from the anti-Sun direction (θ_i ∈ [95°, 130°] from the Sun).
+- **Problem 3** (attitude constrained, free phase): Problem 2 plus the arrival phase φτ of the formation's rotation about the line of sight as a decision variable, eqs. (49)–(56).
 
-The code structure follows the earlier Malladi et al. (2019) reproduction on
-branch `malladi-et-al-claude`.
+All three problems are stated in the non-spinning pointing frame O\* of the
+target formation (Sec. 4.1), so the formation phase enters only the terminal
+condition (39). Equation numbers refer to the current document (`LIFE_Documents`,
+November 4, 2026). The code structure follows the earlier Malladi et al. (2019)
+reproduction on branch `malladi-et-al-claude`.
 
 ## Usage
 
@@ -20,9 +23,9 @@ for the tests only) and an internet connection on first run. CasADi 3.8.1 with
 IPOPT is downloaded into `external/` (git-ignored) by `setupCasadi.m`.
 
 ```matlab
-main                 % solve Problems 1-3, validate, save, compare (~7 min)
-phaseSweep           % Problem 3 phase sweep and reduction check, after main (~4.5 min)
-makeVideo            % render the comparison video from the saved runs (~1.6 min)
+main                 % solve Problems 1-3, validate, save, compare (~5 min)
+phaseSweep           % Problem 3 phase sweep and reduction check, after main (~5 min)
+makeVideo            % render the comparison video from the saved runs (~1.5 min)
 runtests('tests')    % model consistency checks (~5 s)
 ```
 
@@ -34,33 +37,35 @@ initial guess (Sec. 5.2) and there is no warm start, so the solutions compare
 
 ## Method
 
-- **Model** (`src/model/`)
-  - Relative attitude: eqs. (10) and (13), with a Hamilton scalar-first quaternion for R^f_i.
-  - Relative translation: eqs. (19)–(22), on the CR3BP of eqs. (14)–(15), with cannonball SRP on the spacecraft only.
-  - Thruster wrench: eqs. (29)–(31).
+- **State and model** (`src/model/`)
+  - State in the pointing frame O\*, eq. (34): x = [q\*i; ω\*\*i; r\*\*i; ṙ\*\*i], a Hamilton scalar-first quaternion for R\*_i and the position from the formation centre. O\* points at the target star like the formation frame but does not spin (R^c_\* constant, ω\*_c\* = 0).
+  - Dynamics (36)–(38): `relativeDynamics.m` implements the formation-frame model (10), (13), (19)–(22) on the CR3BP of eqs. (14)–(15), with cannonball SRP on the spacecraft only and the thruster wrench (29)–(31). Called with `pointingParams(p)` (no spin, r_fp = 0) it is exactly the pointing-frame model; `tests/ModelTest.m` checks both against a separately written absolute model.
+  - The dynamics, the initial state x_i,0 and the Sun-angle constraint are independent of the formation phase. The phase enters only the target state x^tgt(φτ), eq. (39) (`targetState.m`).
+  - Target-relative quantities (tracking errors, formation-frame plots and videos) come from the solution via R\*_f = R_z(φ(t)) (`toFormation.m`).
   - The gravity difference uses Battin's f(q) form, so no cancellation occurs.
-  - `relativeDynamics.m` is type-generic: the same code is used for the NLP (CasADi) and for the propagation (double).
+  - The model is type-generic: the same code is used for the NLP (CasADi) and for the propagation (double).
 - **Transcription** (`src/ocp/`)
   - One uniform mesh of `p.ocp.N` = 400 intervals.
   - Radau collocation with 3 points per interval and piecewise-constant thrust, solved with IPOPT/MUMPS.
-  - The free arrival time enters via s = t/τ, and the objective is eq. (58).
-  - Scaling, initial guess and tolerances are as specified in Sec. 4.3.
+  - The free arrival time enters via s = t/τ, and the objective is eq. (69).
+  - Terminal condition (39): ω, r and ṙ equal x^tgt(φτ), and the attitude is imposed as q_x = q_y = 0, q_z cos(φτ/2) − q_w sin(φτ/2) = 0 (Sec. 5.2, invariant to |q|, admits ±q). Problems 1 and 2 substitute φτ = φ̄0 + φ̇τ.
+  - Initial guess (Sec. 5.2): τ = t_f, cubic Hermite position and velocity, slerp attitude and linear rate from x_i,0 to x^tgt at the guessed arrival phase, and T = 0.01 T_max. Scaling and tolerances are as in Sec. 5.2.
   - In the NLP, the reference r_bf(t) is a degree-14 Chebyshev fit of the CR3BP halo on [0, t_f] (fit error 6e-5 m). It enters only through the tidal and SRP terms.
 - **Validation** (`src/sim/`, `src/post/`)
   - Independent ode89 propagation of the optimized controls.
-    - The relative state is co-integrated with the reference ODE (14), not the fit.
+    - The pointing-frame state is co-integrated with the reference ODE (14), not the fit.
+  - Arrival checks (Sec. 5.2): deviations of r, ṙ and ω from x^tgt(φτ) in the pointing frame, and the eigenaxis angle of R^f_i = R_z(φτ)ᵀ R\*_i.
     - RelTol 1e-11 and AbsTol 1e-12 apply to the scaled states, and the integrator restarts at every control switch.
   - The same controls are also propagated through a separately written absolute model (spacecraft and formation origin in SER, inertial attitude). Its gate is 1% of the arrival tolerances.
   - All reported errors, figures and videos are based on the independent propagation.
 - **Conventions**
-  - R_x, R_y, R_z are active rotations. This is the only reading under which eq. (52) gives ω^b_cb = +Ω e₃ and eq. (53) gives R^c_f e₃ = +e₂.
-  - Eq. (19) needs the SER-frame velocity difference, which is reconstructed as R^b_f(ṙ^f_pi + ω^f_bf × r^f_fi).
+  - R_x, R_y, R_z are active rotations. This is the only reading under which eq. (65) gives ω^b_cb = +Ω e₃ and eq. (66) gives z\* = [cos 65°, sin 65°, 0].
+  - Eq. (38) needs the SER-frame velocity difference, which is reconstructed as R^b_\*(ṙ\*\*i + ω\*_b\* × r\*\*i).
 
 ## Problem 2: Sun-angle constraint
 
-- **Constraint (45)**: σ_i = r̂_isᵀ R^b_f R(q) e₃ ∈ [cos 130°, cos 95°], see `sunCosine.m` (type-generic).
+- **Constraint (47)–(48)**: σ_i = r̂_isᵀ R^b_\* R\*_i e₃ ∈ [cos 130°, cos 95°], see `sunCosine.m` (type-generic). It depends only on the spacecraft's own attitude and the Sun direction, not on the formation phase.
 - **NLP**: `buildOcp(p, ref, 2)` appends one inequality row per Radau collocation point. The last point of each interval is the next node, so every node but t = 0 is covered. The Sun direction is taken from the formation centre (Sec. 5.2).
-- **Problem 1 is unchanged**: `buildOcp(p, ref, 1)` builds exactly the previous NLP.
 - **Before solving**: `checkSunFeasibility` checks the initial attitude and the formation attitude over [0, t_f].
 - **Verification** (`sunAngle.m`, run for both problems, so Problem 1's violation is measured the same way):
   - θ_i along the independent propagation, using the exact Sun direction from the spacecraft;
@@ -72,11 +77,8 @@ initial guess (Sec. 5.2) and there is no warm start, so the solutions compare
 
 ## Problem 3: free arrival phase
 
-- **Phase.** Every phase-dependent quantity in the code goes through the target formation's phase at t = 0, `p.target.phase0`.
-  - In the NLP it is an argument of the dynamics and Sun-angle functions: fixed for Problems 1 and 2, and φτ − φ̇τ (eq. (46)) for Problem 3.
-  - φτ/π is the last decision variable, with bounds [−1, 1] (eq. (55)).
-- **Initial condition (47).** The spacecraft's physical initial state is fixed: it is defined absolutely by the initial formation `p.init`. Its relative state for a shifted phase is `shiftPhase`, a closed form that works symbolically. `tests/FormationTest.m` checks it against `initialRelativeState` with the shifted phase.
-- **Post-processing.** After solving, `main` passes `p` with the solution's `phase0` to validation, saving and plotting. Propagation, the absolute-model check, the Sun angle and all figures are then evaluated in the solution's own formation frame.
+- **Phase.** φτ/π is the last decision variable, with bounds [−1, 1] (eq. (56)). It enters only the 12 terminal rows (39), a single sparse column of the constraint Jacobian. Dynamics, initial condition and Sun-angle constraint are those of Problem 2.
+- **Post-processing.** After solving, `main` passes `p` with the solution's formation phase at t = 0, φτ − φ̇τ, to validation, saving and plotting. The propagation runs in the phase-independent pointing frame; the tracking errors, the formation-frame figures and the videos are then expressed in the solution's own formation frame.
 - **Multi-start** (`solveMultiStart`, Sec. 5.2): 8 solves from φτ ∈ {−π + mπ/4}, each from the common initial guess with the boundary states of that phase. The best `Solve_Succeeded` solution is kept, and `results/problem3/multistart.json` lists every start.
 - **Phase sweep** (`phaseSweep.m`, run after `main`):
   - 16 solves with φτ fixed, which must not undercut the multi-start optimum;
@@ -106,11 +108,11 @@ The initial formation shares the target origin at t = 0, in both position and ve
 - ω^i_ci(0) = rate·e₃;
 - the inertial velocity relative to the origin is ω_cf0 × r.
 
-This replaces the fixed initial state of eqs. (55)–(56). See `initialRelativeState.m`.
+`initialRelativeState.m` returns this state in the pointing frame O\* of the target formation; it does not depend on the target phase. It replaces the fixed initial state (67)–(68) of the document (see Deviations).
 
 **Scenario.** Both sky directions lie 80° from the anti-Sun direction (+x_c at t = 0), on either side of it, so the slew is 160°. Both ends are inside the Problem 2 field of regard, and Problem 1's unconstrained optimum swings z^i out to 146° from anti-Sun. The earlier ±e₂ setup sits at 90°, outside the band at both ends, so Problem 2 would be infeasible there. A ±65° slew was also tried: Problem 1 stays inside the band without the constraint, so it would not show the difference. For the defaults, the initial attitude error is 160°, and the start lies 173 m from the target corner. To change the setup, edit the sky direction, baselines, apex height, spin rate or phase, or the point, then call `deriveFormations(p)`.
 
-`tests/FormationTest.m` checks the construction. The central test maps the initial state into the absolute model and compares attitude, body rate, position and inertial velocity with the initial pyramid. It does this for all 5 points, for the default and for a randomly oriented, non-default initial formation. The ±e₂ setup is kept in the tests (`e2Setup`) to pin eq. (53) and the earlier numbers.
+`tests/FormationTest.m` checks the construction. The central test maps the initial state into the absolute model and compares attitude, body rate, position and inertial velocity with the initial pyramid. It does this for all 5 points, for the default and for a randomly oriented, non-default initial formation. The ±e₂ setup is kept in the tests (`e2Setup`) to pin the earlier document's eq. (53) and numbers; `skyBasisIsEq66` pins the current eq. (66).
 
 ## Results (N = 400, T_max = 3 N, `results/comparison/comparison.json`)
 
@@ -118,58 +120,76 @@ T_max is set to 3 N in `lifeParameters.m`. All problems start from the same init
 
 | Quantity | Problem 1 | Problem 2 | Problem 3 |
 |---|---|---|---|
-| Solver | `Solve_Succeeded`, 217 it., 20 s | `Solve_Succeeded`, 161 it., 19 s | `Solve_Succeeded`, 119 it., 12 s (best start); 259 s for all 8 starts |
+| Solver | `Solve_Succeeded`, 157 it., 13 s | `Solve_Succeeded`, 149 it., 16 s | `Solve_Succeeded`, 118 it., 12 s (best start); 123 s for all 8 starts |
 | Arrival phase φτ | 60° (prescribed) | 60° (prescribed) | **−5.46°** (free) |
-| Arrival time τ | 14400 s, t_f bound active (multiplier 0.59) | 14400 s, t_f bound active (multiplier 0.65) | 14400 s, t_f bound active (multiplier 0.85) |
-| Total impulse J | 168.401 N s (Δm = 0.0781 kg) | 174.896 N s (Δm = 0.0811 kg), +3.9% vs P1 | **154.321 N s** (Δm = 0.0715 kg), −11.8% vs P2, −8.4% vs P1 |
-| Max thrust | 1.73 N (bound not active) | 1.66 N (bound not active) | 1.88 N (bound not active) |
-| Anti-Sun angle of z^i | 49.7°–146.0° | 50.0°–85.0° | 59.5°–85.0° |
-| Max Sun violation (propagated) | 61.0° (not imposed) | < 1e-3° (gate 0.01°, pass) | < 1e-3° (pass) |
-| Time outside the band (> 0.01°) | 9783 s, mostly 4104–13842 s | 0 s | 0 s |
-| Sun constraint active | – | 22 collocation points on two short arcs: 50° at 6126–6306 s, 85° at 13182–13248 s | 6 points, 85° at 13572–13631 s |
-| Way around the Sun line (`sky_plot.png`) | north of anti-Sun, out to 146° | south of anti-Sun | north, inside the band |
-| Terminal ‖r‖ / ‖ṙ‖ | 4.4e-4 m / 4.6e-7 m/s | 1.8e-6 m / 4.6e-10 m/s | 6.4e-7 m / 9.2e-10 m/s |
-| Terminal angle / ‖ω‖ | 2.4e-5 rad / 3.7e-9 s⁻¹ | 6.4e-8 rad (atan2 form) / 9.9e-12 s⁻¹ | 5.1e-8 rad (atan2 form) / 1.3e-11 s⁻¹ |
-| Absolute-model cross-check | ≤ 2.5e-8 m, 1.7e-13 rad (pass) | ≤ 1.1e-8 m, 6.7e-14 rad (pass) | ≤ 9.7e-9 m, 2.2e-13 rad (pass) |
+| Arrival time τ | 14400 s, t_f bound active (multiplier 0.50) | 14400 s, t_f bound active (multiplier 0.64) | 14400 s, t_f bound active (multiplier 0.85) |
+| Total impulse J | 166.368 N s (Δm = 0.0771 kg) | 174.858 N s (Δm = 0.0810 kg), +5.1% vs P1 | **154.321 N s** (Δm = 0.0715 kg), −11.7% vs P2, −7.2% vs P1 |
+| Max thrust | 1.67 N (bound not active) | 1.61 N (bound not active) | 1.88 N (bound not active) |
+| Anti-Sun angle of z^i | 30.3°–95.4° | 50.0°–85.0° | 59.5°–85.0° |
+| Max Sun violation (propagated) | 19.7° (not imposed) | 1.3e-4° (gate 0.01°, pass) | 3.4e-4° (pass) |
+| Time outside the band (> 0.01°) | 8194 s: below 50° at 463–6381 s (down to 30.3°), above 85° at 11664–13932 s (up to 95.4°) | 0 s | 0 s |
+| Sun constraint active | – | 23 collocation points on two short arcs: 50° at 6156–6342 s, 85° at 13235–13290 s | 6 points, 85° at 13572–13631 s |
+| Way around the Sun line (`sky_plot.png`) | south, cutting inside the band towards anti-Sun | south, along the 50° edge | north, inside the band |
+| Terminal ‖Δr‖ / ‖Δṙ‖ | 4.1e-4 m / 5.8e-7 m/s | 1.5e-6 m / 2.3e-10 m/s | 5.9e-7 m / 8.5e-10 m/s |
+| Terminal angle ξ / ‖Δω‖ | 3.6e-5 rad / 1.7e-9 s⁻¹ | 1.1e-7 rad (atan2 form) / 1.3e-11 s⁻¹ | 4.7e-8 rad (atan2 form) / 1.3e-11 s⁻¹ |
+| Absolute-model cross-check | ≤ 2.0e-8 m, 8.7e-14 rad (pass) | ≤ 1.6e-8 m, 9.5e-14 rad (pass) | ≤ 8.4e-9 m, 3.2e-14 rad (pass) |
 | Accepted | yes | yes (including the Sun-angle gate) | yes (including the Sun-angle gate) |
 
 All gates are 1e-2 m, 1e-5 m/s, 1e-4 rad and 1e-7 s⁻¹. All checks of Sec. 4.5 hold: J1 ≤ J2, J3 ≤ J2, Problem 1 violates the Sun-angle constraint, and Problems 2 and 3 satisfy it. With the free phase, the target point arrives elsewhere on its circle about z_f (`trajectory_comparison.png`), which saves more than the constraint costs: J3 < J1.
+
+### Check of the pointing-frame formulation
+
+The pointing-frame formulation replaced a formation-frame one (commit `e135924`), in which the phase entered the dynamics, the Sun constraint and the initial state. Both describe the same physics, so a thrust history must give the same motion in both. This was checked in both directions:
+
+| | Problem 1 | Problem 2 | Problem 3 |
+|---|---|---|---|
+| Earlier formation-frame optimum, J | 168.401 N s | 174.896 N s | 154.321 N s at −5.46° |
+| … validated by the pointing-frame code | accepted, Sun violation 61.0° (as before) | accepted | accepted |
+| Pointing-frame optimum (this table), J | 166.368 N s | 174.858 N s | 154.321 N s at −5.46° |
+| … validated by the formation-frame code | accepted, Sun violation 19.7° | accepted | accepted |
+
+Problem 3 reaches the same optimum. Problems 1 and 2 reach different, slightly better local optima, because the common initial guess is now interpolated in the pointing frame instead of the spinning formation frame (Sec. 5.2). `tests/ModelTest.m` also propagates one random thrust history in the pointing-frame, formation-frame and absolute models and requires agreement to 1% of the arrival gates.
 
 ### Problem 3 multi-start and phase sweep
 
 | Start φτ | Converged φτ | J (N s) |
 |---|---|---|
-| −180° | – (stopped at the 120 s cap, diverged in IPOPT's restoration phase) | – |
-| −135° | −148.9° | 223.85 |
-| −90°, −45° | −5.3°, **−5.5°** | 154.38, **154.32** |
-| 0°, 45°, 90°, 135° | 8.2°–8.4° | 156.02–156.03 |
+| −180° | −150.1° | 224.16 |
+| −135° | **−5.46°** | **154.32** |
+| −90°, −45° | −5.15° | 154.42 |
+| 0°, 45°, 90°, 135° | 8.2°–8.3° | 156.00–156.03 |
 
-**Phase sweep** (`phaseSweep.m`, 4.5 min, `phase_sweep.png`):
-- With φτ fixed, the cost has one smooth basin. The minimum is 155.05 N s at 0°; at −22.5° it is 160.31 and at 22.5° it is 158.70.
+All 8 starts converge (in the formation-frame formulation the −180° start diverged).
+
+**Phase sweep** (`phaseSweep.m`, 4.8 min, `phase_sweep.png`):
+- With φτ fixed, the cost has one smooth basin. The minimum is 155.04 N s at 0°; at −22.5° it is 160.85 and at 22.5° it is 158.94.
 - J3 = 154.32 N s at −5.46° lies inside that basin and below the sweep minimum, so the multi-start optimum is consistent.
-- The worst arrival phases (±180°) cost 225–230 N s.
+- The worst arrival phases (around ±180°) cost 220–235 N s.
 
 **Reduction check:**
-- With φτ fixed at the prescribed 60°, Problem 3 gives J = 174.863 N s. Problem 2 gives 174.896 N s.
-- That solution has τ = t_f and φ(0) = 3e-9 rad, so it is a Problem 2 solution. Problem 2's NLP warm-started from it converges to the same 174.863 N s, and Problem 2's validation accepts it.
-- So the 0.03 N s difference is a second, slightly better local optimum of Problem 2, not an implementation discrepancy.
+- With φτ fixed at the prescribed 60°, Problem 3 gives J = 174.918 N s with τ = t_f, so it is feasible for Problem 2. Problem 2 gives 174.858 N s.
+- The 0.06 N s (0.03%) difference is between local optima of Problem 2: the two NLPs coincide at τ = t_f but are different problems for IPOPT (Problem 2's terminal condition depends on τ), so their iterates end in different nearby optima. Earlier runs found 174.863 and 174.896 N s for the same problem.
 
-Choice of N (measured with the document's initial state and T_max = 10 N):
-with N = 200, all checks pass except the attitude check (60), which gives
-θ = 2.3e-4 rad.
+Choice of N (measured with the document's initial state and T_max = 10 N, earlier formulation):
+with N = 200, all checks pass except the terminal attitude check, which gives
+ξ = 2.3e-4 rad. No mesh-convergence study is made (see Deviations).
 
 ### Known limitations
 
-- **Burns are not resolved.** The optimum is near-impulsive. On a uniform 36 s mesh, each burn is smeared over whole intervals at low thrust (peak 1.66 N), so the burn shapes are mesh artifacts.
+- **Burns are not resolved.** The optimum is near-impulsive. On a uniform 36 s mesh, each burn is smeared over whole intervals at low thrust (peak 1.6–1.9 N), so the burn shapes are mesh artifacts.
   - The earlier mesh-refinement version (commit `e963d5e`) resolved them, with saturated 10 N burns lasting a few seconds.
   - For the document's initial state and T_max = 10 N, it also reached a lower impulse: J = 131.57 N s at N = 770 nonuniform intervals.
-- **Problem 2 has several local optima.** Some lie on opposite sides of the Sun line (the disconnected path sets of Sec. 4.5), and one is 0.03 N s below the reported one (see the reduction check above).
-  - From the common initial guess (the reported result), z^i passes south of anti-Sun: J = 174.896 N s.
-  - Warm-started from the Problem 1 solution, it passes north, as Problem 1 does: J = 174.595 N s. That is 0.3 N s (0.17%) lower, with 6 touch points and a maximum violation of 0.008°.
-  - Both are accepted. The 1:1 comparison therefore does not give the best Problem 2 optimum found.
-- **Problem 3 multi-start.** One of the 8 starts (−180°) diverges and is stopped by the per-start cap `p.ocp.p3MaxWallTime` = 120 s; uncapped it ran for more than 40 min. Fixing φτ = −180° in the sweep converges normally, so the failure comes from the start, not from that phase. The multi-start makes `main` take about 7 min; reduce `p.ocp.p3Starts` for faster iteration.
-- **Local optimum only.** With the document's initial state and T_max = 10 N, cold starts on different N reach different optima: J = 132.78 at N = 200, 136.80 at N = 300 and 138.08 at N = 400.
+- **Problems 1 and 2 have several local optima.** They lie within about 1% (Problem 1: 166.37 and 168.40 N s) and 0.2% (Problem 2: 174.60–174.92 N s) of each other, some on opposite sides of the Sun line (the disconnected path sets of Sec. 4.5). Which one IPOPT reaches depends on the initial guess, as the formulation check and the reduction check above show. The 1:1 comparison from the common initial guess therefore does not necessarily give the best optimum of each problem.
+- **Problem 3 multi-start.** Each start is capped at `p.ocp.p3MaxWallTime` = 120 s (in the formation-frame formulation one start diverged for more than 40 min); no start reaches the cap now. The multi-start makes `main` take about 5 min; reduce `p.ocp.p3Starts` for faster iteration.
+- **Local optimum only.** With the document's initial state and T_max = 10 N, cold starts on different N reach different optima: J = 132.78 at N = 200, 136.80 at N = 300 and 138.08 at N = 400 (earlier formulation).
 - **IPOPT setting.** `bound_relax_factor = 0` is required. With IPOPT's default, `honor_original_bounds` clips the returned thrusts by ~1e-8·T_max. That leaves an ω bias of about 1e-9 s⁻¹ per interval, which grows to about 1e-4 rad of terminal attitude error (measured).
+
+### Deviations from the document
+
+- **Scenario (§5.1).** The ±80° slew, the formation-based initial state and the target point at a pyramid corner (above) are kept instead of the document's target pointing (66), initial state (67)–(68) and r_fp = [50, 0, 0] m. The formulation does not depend on this choice; `initialRelativeState` returns the initial state in the pointing frame either way.
+- **Mesh (§5.2).** One uniform mesh with N = 400 instead of N = 200 refined until doubling N changes J by less than 1%; no mesh-convergence output.
+- **Reference.** A degree-14 Chebyshev fit of the halo instead of a B-spline interpolant (fit error 6e-5 m).
+- **Scaling.** Thrust is scaled by T_max = 3 N instead of 10 N; the other scales are those of §5.2.
 
 ## Outputs (`results/`)
 
@@ -186,7 +206,7 @@ with N = 200, all checks pass except the attitude check (60), which gives
     - right, a live sky plot, info boxes (anti-Sun angle, inside or outside, impulse, arrival phase), the anti-Sun angle and the cumulative impulse with a cursor.
 - **Per problem** (`results/problemK/`): the figures and data below. `sun_angle.png` shows θ_i against the band, with the intervals outside it and the active points. `summary.json` holds a `sun` block and the arrival phase. Problem 3 also writes `multistart.json`, and `phaseSweep` adds `phase_sweep.json` and `.png`. The two earlier videos per problem are rendered with `video.perProblem = true` in `makeVideo.m`; each uses its own formation phase.
 - **Figures** (written by `main` and left open in MATLAB; saved as PNG)
-  - `tracking_errors.png`: θ, ω, r, ṙ, with tolerance bands and magnified arrival views.
+  - `tracking_errors.png`: ξ, ω^f_fi, r^f_pi, ṙ^f_pi (target-relative, formation frame), with tolerance bands and magnified arrival views.
   - `control_wrench.png`: body-frame force and torque.
   - Thrust: `thrust_histories.png` (per pod), `thrust_burn_zoom.png`, `thrust_heatmap.png`.
   - `impulse.png`: cumulative impulse and per-thruster impulse.
@@ -207,12 +227,12 @@ with N = 200, all checks pass except the attitude check (60), which gives
 - **Data**
   - `solution.mat` (v7.3) holds the solution, the propagation, the reference and the parameters.
   - `summary.json`, `settings.json`.
-  - CSV files: thrust history, propagated states (with the Sun angle) and collocation states.
+  - CSV files: thrust history, propagated states and collocation states. Columns ending `_pt` are the pointing-frame state (34); the propagated file also has the target-relative formation-frame state (`_fp`: q_fi, ω^f_fi, r^f_pi, ṙ^f_pi) and the Sun angle.
 
 ## Layout
 
 - `src/lifeParameters.m`: every constant of Sec. 5.1, the thruster geometry, the Sun-angle bounds, solver settings and gates.
-- `src/model/`: frames, dynamics (relative, inertial-path check, absolute), state mappings.
+- `src/model/`: frames, dynamics (relative, inertial-path check, absolute), the pointing-frame parameters and target state, state mappings.
 - `src/ref/`: halo propagation and Chebyshev fit.
 - `src/ocp/`: collocation NLP (Problems 1–3), initial guess, solve, Problem 3 multi-start.
 - `src/sim/`, `src/post/`: propagation, burns, validation, the Sun angle, saving, the comparison of problems.

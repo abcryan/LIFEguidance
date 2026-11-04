@@ -1,6 +1,6 @@
 function [thAcos, thAtan] = eigenAngle(q)
 %EIGENANGLE Eigenaxis angle of the rotation represented by quaternion q.
-%   thAcos is the form of eqs. (60) and (5), evaluated on R(q) without
+%   thAcos is the form of Sec. 5.2, evaluated on R(q) without
 %   renormalizing q (argument clamped to [-1, 1]); thAtan =
 %   2*atan2(|q_v|, |q_w|) has no ~1.5e-8 rad round-off floor.
 %   q may be 4xn.

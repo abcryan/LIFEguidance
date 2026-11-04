@@ -3,6 +3,9 @@ function [xDot, out] = relativeDynamics(t, x, T, rbf, p)
 %   rotating virtual formation, eqs. (10), (13), (19)-(22), (29)-(31).
 %   x   = [q; w^f_fi; r^f_pi; rdot^f_pi] (13x1, SI), q ~ R^f_i
 %         (Hamilton, scalar first)
+%   With p = pointingParams(p) (no spin, r_fp = 0) this is the
+%   pointing-frame model (36)-(38) used by the NLP and the propagation:
+%   x = [q*i; w*_*i; r*_*i; rdot*_*i].
 %   T   = thrust magnitudes (20x1) [N]
 %   rbf = formation origin in the SER frame [m] (reference trajectory)
 %   Works for double and CasADi inputs.

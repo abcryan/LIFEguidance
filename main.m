@@ -2,8 +2,10 @@
 %  Updated LIFE guidance problem, Secs. 4-5: minimum-impulse acquisition of
 %  a point on a rotating virtual formation near Sun-Earth L2 with 20 fixed
 %  throttleable thrusters. Problem 1: fixed phase, no path constraint.
-%  Problem 2: adds the Sun-angle constraint (45). Problem 3: adds the free
-%  arrival phase phiTau, solved by multi-start. Direct Radau collocation
+%  Problem 2: adds the Sun-angle constraint (48). Problem 3: adds the free
+%  arrival phase phiTau, solved by multi-start. All three are stated in
+%  the non-spinning pointing frame (Sec. 4.1), where the phase enters only
+%  the terminal condition (39). Direct Radau collocation
 %  (CasADi/IPOPT) on one uniform mesh, independent forward propagation,
 %  Sec. 5.3 figures per problem and a comparison.
 %

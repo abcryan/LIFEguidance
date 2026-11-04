@@ -1,10 +1,11 @@
 function ab = propagateAbsolute(sol, p, tOut)
 %PROPAGATEABSOLUTE Cross-check: the same controls applied to the absolute
 %   model (spacecraft and formation origin in SER, inertial attitude),
-%   mapped back to the relative state (33) at times tOut.
+%   mapped back to the pointing-frame state (34) at times tOut.
 %   Positions are shifted by c = r_bf(0) to retain precision.
 c = p.haloIC(1:3)*p.dse;
 vf0 = p.haloIC(4:6)*p.dse*p.Om;
+p = pointingParams(p);
 z = relToAbs(0, initialRelativeState(p), zeros(3,1), vf0, p);
 opts = odeset('RelTol', 1e-13, ...
               'AbsTol', [1e-15*ones(4,1); 1e-16*ones(3,1); ...

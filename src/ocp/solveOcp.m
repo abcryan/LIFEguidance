@@ -16,7 +16,7 @@ info.iter = st.iter_count;
 sol = unpackW(ocp, res.x, p);
 sol.lamX = full(res.lam_x);
 lamG = full(res.lam_g);
-sol.lamSun = lamG(ocp.iSun);            % multipliers of (45), Problem 2
+sol.lamSun = lamG(ocp.iSun);            % multipliers of (48), Problems 2-3
 g = full(res.g);
 eq = ocp.lbg == ocp.ubg;                % collocation, continuity, boundary
 info.maxDefect = max(abs(g(eq) - ocp.lbg(eq)));

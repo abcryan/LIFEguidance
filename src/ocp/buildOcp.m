@@ -1,13 +1,16 @@
 function ocp = buildOcp(p, ref, problem)
 %BUILDOCP Minimum-impulse transfer by Radau collocation on p.ocp.N uniform
 %   intervals of the normalized time s = t/tau. problem = 1 (default):
-%   Problem 1, eqs. (36)-(41); problem = 2: Problem 2, which adds the
-%   Sun-angle constraint (45) at every collocation point; problem = 3:
-%   Problem 3, eqs. (48)-(55), which adds the arrival phase phiTau.
+%   Problem 1, eqs. (40)-(45); problem = 2: Problem 2, which adds the
+%   Sun-angle constraint (48) at every collocation point; problem = 3:
+%   Problem 3, eqs. (49)-(56), which adds the arrival phase phiTau.
+%   State in the non-spinning pointing frame O* (Sec. 4.1): the dynamics,
+%   the initial state and the Sun-angle constraint are phase-independent;
+%   phiTau enters only the terminal condition (39).
 %   Decision vector w = [tau/tf; X(:); XC(:); U(:)] (Problem 3: and
 %   phiTau/pi last) with scaled states X (13 x N+1 nodes), XC (13 x N*d
 %   collocation points) and piecewise-constant T/Tmax U (20 x N). Each
-%   interval lasts h = tau/N and the objective is (68), h*sum_n sum_k T_k,n.
+%   interval lasts h = tau/N and the objective is (69), h*sum_n sum_k T_k,n.
 import casadi.*
 if nargin < 3, problem = 1; end
 N = p.ocp.N; d = p.ocp.d; nx = 13; nu = p.nThr;
@@ -15,16 +18,13 @@ sigma = ones(1, N)/N;
 [cRoot, C, D] = radauCoefficients(d);
 S = p.ocp.xScale;
 
-% Scaled dynamics dxhat/dt = S^-1 f(t, S xhat, Tmax uhat; ph), with the
-% target formation phase at t = 0, ph = p.target.phase0, as an argument
-% (fixed for Problems 1 and 2, phiTau - rate*tau (46) for Problem 3)
+% Scaled dynamics dxhat/dt = S^-1 f(t, S xhat, Tmax uhat), eqs. (36)-(38)
+pP = pointingParams(p);
 t  = SX.sym('t');
 xh = SX.sym('x', nx);
 uh = SX.sym('u', nu);
-ph = SX.sym('ph');
-pPh = p; pPh.target.phase0 = ph;
-f  = relativeDynamics(t, S.*xh, p.Tmax*uh, chebEvalRef(ref, t), pPh);
-F  = Function('F', {t, xh, uh, ph}, {f./S});
+f  = relativeDynamics(t, S.*xh, p.Tmax*uh, chebEvalRef(ref, t), pP);
+F  = Function('F', {t, xh, uh}, {f./S});
 Fm = F.map(N*d);
 
 % Decision variables
@@ -43,15 +43,15 @@ U  = reshape(w(ix.U), nu, N);
 
 tau   = p.tf*tauH;
 if problem >= 3
-    ph0 = pi*w(ix.phi) - p.target.rate*tau;   % phase at t = 0, eq. (46)
+    phiTau = pi*w(ix.phi);                    % decision variable, (56)
 else
-    ph0 = p.target.phase0;
+    phiTau = p.target.phase0 + p.target.rate*tau;   % prescribed, (43)
 end
 sNode = [0, cumsum(sigma)];
 sColl = reshape(sNode(1:N) + cRoot(2:end)'*sigma, 1, []);  % column (n-1)*d+j
 colInt = kron(1:N, ones(1, d));          % interval of each collocation column
 h = tau*sigma;                           % 1xN, MX
-Fval = Fm(tau*sColl, XC, U(:, colInt), repmat(ph0, 1, N*d));
+Fval = Fm(tau*sColl, XC, U(:, colInt));
 
 % Collocation and continuity
 defect = MX(nx, N*d);
@@ -67,22 +67,24 @@ for j = 1:d
 end
 cont = X(:, 2:N+1) - xEnd;
 
-% Boundary conditions (38)-(39): q_v = 0, w = r = v = 0 at tau; the
-% initial relative state depends on the phase in Problem 3, eq. (47)
-x0 = initialRelativeState(p);
-if problem >= 3, x0 = shiftPhase(x0, ph0 - p.target.phase0, p); end
-x0h = x0./S;
-g = [defect(:); cont(:); X(:,1) - x0h; X(2:nx, N+1)];
+% Boundary conditions (42)-(43): x(0) = x_i,0 and x(tau) = x^tgt(phiTau),
+% eq. (39); the attitude as q_x = q_y = 0, q_z cos(phiTau/2) -
+% q_w sin(phiTau/2) = 0 (Sec. 5.2, invariant to |q|, admits +-q)
+x0h = initialRelativeState(p)./S;
+xT = S.*X(:, N+1);
+xTgt = targetState(phiTau, p);
+gT = [xT(2:3); xT(4)*cos(phiTau/2) - xT(1)*sin(phiTau/2); (xT(5:13) - xTgt(5:13))./S(5:13)];
+g = [defect(:); cont(:); X(:,1) - x0h; gT];
 lbg = zeros(size(g)); ubg = zeros(size(g));
 
-% Sun-angle constraint (45) at the collocation points (the last one of each
+% Sun-angle constraint (48) at the collocation points (the last one of each
 % interval is the next node; the initial node is checked before solving),
 % with the Sun direction from the formation centre (Sec. 5.2)
 ocp.iSun = [];
 if problem >= 2
-    Sig = Function('Sig', {t, xh, ph}, {sunCosine(t, xh(1:4), chebEvalRef(ref, t), pPh)});
+    Sig = Function('Sig', {t, xh}, {sunCosine(t, xh(1:4), chebEvalRef(ref, t), pP)});
     Sm = Sig.map(N*d);
-    sig = Sm(tau*sColl, XC, repmat(ph0, 1, N*d));
+    sig = Sm(tau*sColl, XC);
     ocp.iSun = numel(g) + (1:N*d)';
     g = [g; sig(:)];
     lbg = [lbg; cos(p.sun.thetaMax)*ones(N*d, 1)];
@@ -91,11 +93,11 @@ end
 
 J = p.Tmax*sum(h.*sum(U, 1))/p.ocp.Jscale;
 
-% Bounds: (39) with the numerical lower bound, (40)
+% Bounds: (45) with the numerical lower bound, (44)
 lbx = -inf(nW, 1); ubx = inf(nW, 1);
 lbx(ix.tau) = p.tauMin/p.tf; ubx(ix.tau) = 1;
 lbx(ix.U) = 0; ubx(ix.U) = 1;
-lbx(ix.phi) = -1; ubx(ix.phi) = 1;          % (55), phiTau/pi
+lbx(ix.phi) = -1; ubx(ix.phi) = 1;          % (56), phiTau/pi
 
 opts = struct('expand', true, 'print_time', false, 'ipopt', p.ocp.ipopt);
 if problem >= 3, opts.ipopt.max_wall_time = p.ocp.p3MaxWallTime; end

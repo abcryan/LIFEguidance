@@ -1,7 +1,7 @@
 function fig = plotTracking(res, p)
 %PLOTTRACKING Eigenaxis attitude error and components of w^f_fi, r^f_pi,
 %   rdot^f_pi (propagated), with magnified arrival views of the norms
-%   against the terminal tolerances (59)-(60).
+%   against the terminal tolerances of Sec. 5.2.
 s = plotStyle();
 t = res.prop.t; x = res.prop.x; tau = res.sol.tau;
 fig = newFigure('tracking');

@@ -1,6 +1,6 @@
 function fig = plotSunAngle(res, p)
 %PLOTSUNANGLE Anti-Sun angle 180 - theta_i of n^i (propagated, exact Sun
-%   direction) against the field of regard of eq. (45), with the intervals
+%   direction) against the field of regard of eq. (48), with the intervals
 %   outside it (red) and, for Problem 2, the points where it is active.
 s = plotStyle(); sn = res.sun;
 fig = newFigure('sunAngle', [50 50 1300 500]);
@@ -19,5 +19,5 @@ if res.problem >= 2
 else
     str = [str, ' (not imposed in Problem 1)'];
 end
-title(ax, sprintf('Problem %d: Sun angle, eq. (45) — %s', res.problem, str), 'FontWeight', 'normal');
+title(ax, sprintf('Problem %d: Sun angle, eq. (48) — %s', res.problem, str), 'FontWeight', 'normal');
 end

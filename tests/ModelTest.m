@@ -112,27 +112,6 @@ classdef ModelTest < matlab.unittest.TestCase
             end
         end
 
-        function symbolicPhaseEqualsShiftedFormation(tc)
-            % Problem 3 NLP: dynamics and Sun cosine with the formation
-            % phase as a CasADi argument equal the double evaluation with
-            % a numerically shifted p.target.phase0
-            p = tc.p; rng(7);
-            t = casadi.SX.sym('t'); x = casadi.SX.sym('x', 13); T = casadi.SX.sym('T', 20);
-            r = casadi.SX.sym('r', 3); ph = casadi.SX.sym('ph');
-            pPh = p; pPh.target.phase0 = ph;
-            F = casadi.Function('F', {t, x, T, r, ph}, ...
-                {relativeDynamics(t, x, T, r, pPh), sunCosine(t, x(1:4), r, pPh)});
-            for k = 1:20
-                [ts, xs, Ts, rs] = randomSample(p);
-                phs = 2*pi*rand - pi;
-                pn = p; pn.target.phase0 = phs;
-                [a, sa] = F(ts, xs, Ts, rs, phs);
-                b = relativeDynamics(ts, xs, Ts, rs, pn);
-                tc.verifyLessThan(norm(full(a) - b), 1e-14*norm(b));
-                tc.verifyLessThan(abs(full(sa) - sunCosine(ts, xs(1:4), rs, pn)), 1e-14);
-            end
-        end
-
         function sunCosineChecks(tc)
             % Eq. (44): CasADi against double; at t = 0 the formation axis
             % z_f lies 80 deg from anti-Sun (+x_c, up to the halo offset);
@@ -178,20 +157,29 @@ classdef ModelTest < matlab.unittest.TestCase
 
         function absoluteMatchesRelativePropagation(tc)
             % Same random piecewise-constant thrust in the absolute model
-            % (SER + inertial attitude) and the relative model; agreement
-            % to 1% of the arrival tolerances over 4 h
+            % (SER + inertial attitude) and the pointing-frame model;
+            % agreement to 1% of the arrival tolerances over 4 h, both in
+            % the pointing frame and, via toFormation, in the spinning
+            % formation frame of a nonzero phase (the formulation of the
+            % pointing frame equals that of the formation frame)
             p = tc.p; rng(5);
+            p.target.phase0 = 1.3;
             N = 48;
             sol.N = N; sol.tNode = linspace(0, p.tf, N + 1);
             sol.T = p.Tmax*rand(20, N).*(rand(20, N) < 0.1)*0.05;
             prop = propagateRelative(sol, p, 2);
             ab = propagateAbsolute(sol, p, prop.t);
-            d = stateDiscrepancy(ab.x, prop.x);
+            xf = zeros(13, numel(prop.t));
+            for k = 1:numel(prop.t)
+                xf(:,k) = absToRel(prop.t(k), ab.z(:,k), p);
+            end
             g = p.gate.absRel;
-            tc.verifyLessThan(d.max.r, g*p.gate.r);
-            tc.verifyLessThan(d.max.v, g*p.gate.v);
-            tc.verifyLessThan(d.max.theta, g*p.gate.theta);
-            tc.verifyLessThan(d.max.w, g*p.gate.w);
+            for d = [stateDiscrepancy(ab.x, prop.xP), stateDiscrepancy(xf, prop.x)]
+                tc.verifyLessThan(d.max.r, g*p.gate.r);
+                tc.verifyLessThan(d.max.v, g*p.gate.v);
+                tc.verifyLessThan(d.max.theta, g*p.gate.theta);
+                tc.verifyLessThan(d.max.w, g*p.gate.w);
+            end
         end
     end
 end

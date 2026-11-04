@@ -4,7 +4,7 @@ function videoCompare(R, p, sched, file)
 %   one attitude view per problem in SER axes, seen across the Sun line
 %   with anti-Sun up (the same camera for all, following the Sun
 %   direction): true-scale body with plumes, the Sun direction, the field
-%   of regard of eq. (45) as a green zone of the sphere about the
+%   of regard of eq. (48) as a green zone of the sphere about the
 %   anti-Sun axis, and the body axis z^i, whose tip must stay in it (green
 %   inside, red outside). Bottom left: formation-centred close-up with
 %   SER-parallel axes: each distinct virtual formation (prescribed phase,
@@ -18,7 +18,7 @@ sunCol = [0.9 0.6 0];
 
 fig = newFigure('videoCompare', [50 50 1280 720]); fig.Resize = 'off';
 annotation(fig, 'textbox', [0.01 0.935 0.98 0.06], 'String', ...
-    sprintf('Problems %s: Sun-angle constraint (45) and free arrival phase', ...
+    sprintf('Problems %s: Sun-angle constraint (48) and free arrival phase', ...
     strjoin(cellfun(@(r) sprintf('%d', r.problem), R, 'UniformOutput', false), ', ')), ...
     'EdgeColor', 'none', 'FontSize', 15, 'FontWeight', 'bold');
 hTime = annotation(fig, 'textbox', [0.01 0.885 0.60 0.05], 'EdgeColor', 'none', ...
