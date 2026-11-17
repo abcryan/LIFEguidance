@@ -134,6 +134,31 @@ classdef FormationTest < matlab.unittest.TestCase
             % Both frames spin at 24 h about opposite axes: relative rate -2 ws
             tc.verifyEqual(x0(11:13), cross([0; 0; -2*p.ws], [-12.5; 75; 0]), 'AbsTol', 1e-15);
         end
+
+        function fleetInitialStatesMatchTable3(tc)
+            % Problem 4, Table 3 and eqs. (77)-(81): initial states in the
+            % target pointing frame, target points and distances at
+            % phiTau = 0, for the document's spacecraft numbering
+            % (p.fleet.point maps it to pyramidPoints)
+            r0 = [-11.7462 75 -4.27525; -11.7462 -75 -4.27525; 11.7462 75 4.27525;
+                  11.7462 -75 4.27525; 102.606 0 -281.908]';
+            v0 = 1e-3*[5.12523 0.909026 1.86543; -5.12523 0.909026 -1.86543;
+                       5.12523 -0.909026 1.86543; -5.12523 -0.909026 -1.86543; 0 0 0]';
+            rfp = [40 240 0; 40 -240 0; -40 240 0; -40 -240 0; 0 0 960]';
+            dist = [173.0 173.0 173.0 173.0 1246.1];
+            for i = 1:5
+                pk = spacecraftParams(tc.p, i);
+                x0 = initialRelativeState(pk);
+                tc.verifyEqual(x0(1:4), [0.173648; 0; 0.984808; 0], 'AbsTol', 5e-7);   % (78)
+                tc.verifyEqual(x0(5:7), 1e-5*[2.48724; 0; -6.83364], 'AbsTol', 1e-10);
+                tc.verifyEqual(x0(8:10), r0(:,i), 'AbsTol', 5e-4);       % printed digits
+                tc.verifyEqual(x0(11:13), v0(:,i), 'AbsTol', 5e-9);
+                tc.verifyEqual(pk.rfp, rfp(:,i), 'AbsTol', 1e-12);
+                xt = targetState(0, pk);
+                tc.verifyEqual(norm(xt(8:10) - x0(8:10)), dist(i), 'AbsTol', 0.05);
+            end
+            tc.verifyEqual(spacecraftParams(tc.p, 1).rfp, tc.p.rfp);   % Problems 1-3
+        end
     end
 end
 

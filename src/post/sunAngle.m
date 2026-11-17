@@ -38,7 +38,8 @@ sigN = sunCosine(sol.tColl, sol.XC(1:4,:), chebEvalRef(ref, sol.tColl), pointing
 [~, sun.collMaxViolDeg] = violationDeg(acos(min(max(sigN, -1), 1)), p);
 
 % Active constraint (Problem 2): collocation points within the gate of a
-% bound. With the attitude a path constraint of high relative degree, these
+% bound of the NLP (the band backed off by p.sun.marginDeg). With the
+% attitude a path constraint of high relative degree, these
 % are isolated touch points rather than boundary arcs. The CasADi
 % multiplier there is negative at the lower bound of sigma (thetaMax,
 % anti-Sun 50 deg) and positive at the upper one (thetaMin, anti-Sun 85).
@@ -46,11 +47,12 @@ sun.active = struct('t', {}, 'antiDeg', {}, 'bound', {}, 'lambda', {});
 sun.activeBound = "";
 if isfield(sol, 'lamSun') && ~isempty(sol.lamSun)
     thN = rad2deg(acos(min(max(sigN, -1), 1)));
-    lo = abs(thN - rad2deg(p.sun.thetaMax)) < p.gate.sunDeg;
-    hi = abs(thN - rad2deg(p.sun.thetaMin)) < p.gate.sunDeg;
+    lo = abs(thN - (rad2deg(p.sun.thetaMax) - p.sun.marginDeg)) < p.gate.sunDeg;
+    hi = abs(thN - (rad2deg(p.sun.thetaMin) + p.sun.marginDeg)) < p.gate.sunDeg;
     for k = find(lo | hi)
         sun.active(end + 1) = struct('t', sol.tColl(k), 'antiDeg', 180 - thN(k), ...
-            'bound', 180 - rad2deg(p.sun.thetaMax*lo(k) + p.sun.thetaMin*hi(k)), ...
+            'bound', 180 - rad2deg(p.sun.thetaMax*lo(k) + p.sun.thetaMin*hi(k)) + ...
+                     p.sun.marginDeg*(lo(k) - hi(k)), ...
             'lambda', sol.lamSun(k));
     end
     sides = ["anti-Sun 50 deg", "anti-Sun 85 deg"];

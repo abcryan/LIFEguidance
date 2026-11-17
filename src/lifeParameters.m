@@ -46,6 +46,18 @@ p.init = struct('sky', [cosd(80); -sind(80); 0], 'phase0', 0, 'rate', 2*pi/86400
                 'nulling', 25, 'imaging', 150, 'height', 300, 'point', 1);
 p = deriveFormations(p);
 
+%% Fleet of Problem 4, Sec. 5.1 "Additions for Problem 4"
+% Spacecraft i of the document -> point of pyramidPoints (whose corner
+% order is (+,+), (-,+), (-,-), (+,-)): collectors (+,+), (+,-), (-,+),
+% (-,-) and the combiner at the apex. The same point in the initial and
+% the target formation (fixed assignment). Spacecraft 1 is the one of
+% Problems 1-3. override{i}: spacecraft-specific parameters (fields of p,
+% e.g. m, J, Asrp, sun), empty: identical spacecraft.
+p.fleet.point = [1 4 2 3 5];
+p.fleet.name = ["collector (+,+)", "collector (+,-)", "collector (-,+)", ...
+                "collector (-,-)", "combiner"];
+p.fleet.override = cell(1, 5);
+
 %% Spacecraft, Sec. 4.3
 p.m    = 4000;                          % [kg]
 p.J    = 1e4*diag([1.625 1.625 2.075]); % [kg m^2]
@@ -71,6 +83,13 @@ p.beta = p.Ssun*p.Cr*p.Asrp*p.dse^2/(p.clight*p.m);
 p.sun.n        = [0; 0; 1];             % n^i = e3
 p.sun.thetaMin = deg2rad(95);           % anti-Sun angle <= 85 deg
 p.sun.thetaMax = deg2rad(130);          % anti-Sun angle >= 50 deg
+% CHOICE: the NLP imposes the band this much inside [thetaMin, thetaMax]
+% (back-off for the motion between collocation points). Without it, at
+% N = 400, d = 5 the combiner (Problem 4) touched the 50 deg bound at two
+% collocation points 10 s apart while slewing fast, and the propagated
+% angle dipped to 49.982 deg between them, 0.018 deg past the gate.
+% The verification and its gate below use the band itself.
+p.sun.marginDeg = 0.05;                 % [deg]
 % Problem 2 verification: max violation along the propagation (Sec. 5.2)
 p.gate.sunDeg  = 0.01;                  % [deg]
 
@@ -80,10 +99,19 @@ p.tauMin = 1;                           % numerical lower bound on tau [s]
 
 %% Transcription, Sec. 4.3 "Numerical solution and verification"
 % Uniform intervals. CHOICE: the document's initial N = 200 fails the
-% attitude check (60) (theta = 2.3e-4 rad); N = 400 passes all of
-% (59)-(60) with build + solve in ~40 s.
+% attitude check (60) (theta = 2.3e-4 rad). N = 400 with d = 3 Radau
+% points passes for one collector (Problems 1-3), but not for the combiner
+% of Problem 4: it slews 160 deg while flying 1.25 km, at up to
+% 0.012-0.020 rad/s, i.e. 0.4-0.7 rad per 36 s interval, which three
+% collocation points do not resolve (measured at the Problem 4 optimum:
+% |dr| 1.9e-2 m, xi 6.9e-4 rad, |dw| 1.4e-7 1/s; N = 500 and 600 still
+% fail for its faster-turning local optima). CHOICE: d = 5 Radau points
+% (order 9 instead of 5) at N = 400: the combiner passes with large
+% margins, also its fastest-turning optimum (0.019 rad/s: xi 3.8e-7 rad,
+% |dr| 1.5e-5 m), with 36% more variables. One mesh for all problems
+% keeps them comparable.
 p.ocp.N      = 400;
-p.ocp.d      = 3;                       % Radau collocation points
+p.ocp.d      = 5;                       % Radau collocation points
 p.ocp.uGuess = 0.01;                    % T/Tmax initial guess
 % Problem 3 multi-start arrival phases, Sec. 5.2: -pi + m*pi/4, m = 0..7
 p.ocp.p3Starts = -pi + (0:7)*pi/4;
@@ -105,6 +133,22 @@ p.ocp.ipopt  = struct('tol', 1e-8, 'constr_viol_tol', 1e-8, ...
                       'bound_relax_factor', 0, ...
                       'linear_solver', 'mumps', 'print_level', 5, ...
                       'print_frequency_iter', 50);
+% Problem 4 (Sec. 5.2): fixed-phase sweep at tau = tf on 16 phases (plus
+% Problem 2's prescribed phase, an upper bound), two attitude-class guesses
+% per subproblem through an intermediate z^i tilted from anti-Sun towards
+% +-z_c. CHOICE: tilted to the middle of the field of regard (67.5 deg from
+% anti-Sun); z_c itself lies 90 deg from anti-Sun, outside the band.
+p.ocp.p4.sweepPhases = -pi + (0:15)*pi/8;
+p.ocp.p4.viaAntiSunDeg = 67.5;
+p.ocp.p4.nJointStarts = 3;              % joint NLP from the best grid points,
+                                        % primal start (continuationOptions)
+% CHOICE: finite-difference check of dJ_i/dphi: slope of a quadratic fit
+% through re-solves at phi* + m*fdStepDeg, m = -2..2 [deg] (solveFleet)
+p.ocp.p4.fdStepDeg = 0.25;
+% CHOICE: wall-time cap per joint solve [s] (measured 91-220 s)
+p.ocp.p4MaxWallTime = 900;
+% Parallel pool for the Problem 4 sweep and validation (process workers)
+p.par.nWorkers = 8;
 % A burn is a run of intervals with sum_k T_k above this (CHOICE) [N]
 p.burnTol = 1e-3*p.Tmax;
 
