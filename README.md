@@ -22,16 +22,23 @@ reproduction on branch `malladi-et-al-claude`.
 
 Requires MATLAB (R2026a tested; Optimization and Symbolic toolboxes are needed
 for the tests only) and an internet connection on first run. CasADi 3.8.1 with
-IPOPT is downloaded into `external/` (git-ignored) by `setupCasadi.m`.
+IPOPT is downloaded into `external/` (git-ignored) by `src/utils/setupCasadi.m`.
 
 ```matlab
 fleetSweep           % Problem 4 phase sweep and Problem 3 per spacecraft, parallel (~22 min, once)
 main                 % solve Problems 1-4, validate, save, compare
-phaseSweep           % Problem 3 phase sweep and reduction check, after main (~5 min)
-makeVideo            % render the comparison and fleet videos from the saved runs
-problem3Combiner     % Problem 3 for the combiner alone, vs collector 1 (~9 min, after fleetSweep and main)
-makeVideoCombiner    % its SER and formation videos (~3 min)
+makeVideo            % render the comparison and fleet videos (flags: per problem, studies)
 runtests('tests')    % model and transcription checks (~10 s)
+```
+
+Side studies in `studies/`, after `fleetSweep` and `main` (their videos via
+`video.combiner` and `video.targets` in `makeVideo.m`):
+
+```matlab
+run studies/phaseSweep         % Problem 3 phase sweep and reduction check (~5 min)
+run studies/problem3Combiner   % Problem 3 for the combiner alone, vs collector 1 (~9 min)
+run studies/problem4Targets    % Problem 4 for target directions A and B (~45 min each) and an overview figure
+run tests/tauFixedComparison   % benchmark: Problem 3 with tau free vs fixed to tf (~12 min)
 ```
 
 Problem 4 uses the Parallel Computing Toolbox (a process pool of
@@ -93,7 +100,7 @@ initial guess (Sec. 5.2) and there is no warm start, so the solutions compare
 - **Phase.** φτ/π is the last decision variable, with bounds [−1, 1] (eq. (56)). It enters only the 12 terminal rows (39), a single sparse column of the constraint Jacobian. Dynamics, initial condition and Sun-angle constraint are those of Problem 2.
 - **Post-processing.** After solving, `main` passes `p` with the solution's formation phase at t = 0, φτ − φ̇τ, to validation, saving and plotting. The propagation runs in the phase-independent pointing frame; the tracking errors, the formation-frame figures and the videos are then expressed in the solution's own formation frame.
 - **Multi-start** (`solveMultiStart`, Sec. 5.2): 8 solves from φτ ∈ {−π + mπ/4}, each from the common initial guess with the boundary states of that phase. The best `Solve_Succeeded` solution is kept, and `results/problem3/multistart.json` lists every start.
-- **Phase sweep** (`phaseSweep.m`, run after `main`):
+- **Phase sweep** (`studies/phaseSweep.m`, run after `main`):
   - 16 solves with φτ fixed, which must not undercut the multi-start optimum;
   - one solve at Problem 2's prescribed arrival phase φ̄0 + φ̇t_f, the reduction check: Problem 3 with this phase is Problem 2;
   - writes `results/problem3/phase_sweep.json` and `phase_sweep.png`.
@@ -205,7 +212,7 @@ Problem 3 reaches the same optimum. Problems 1 and 2 reach different, slightly b
 
 All 8 starts converge.
 
-**Phase sweep** (`phaseSweep.m`, 5 min, `phase_sweep.png`):
+**Phase sweep** (`studies/phaseSweep.m`, 5 min, `phase_sweep.png`):
 - With φτ fixed, the minimum is 155.24 N s at −22.5°; at 0° it is 157.20 and at 22.5° 158.75.
 - J3 = 154.36 N s at −5.33° lies below the sweep minimum, so the multi-start optimum is consistent with the sweep.
 - The worst arrival phases (around ±180°) cost 220–231 N s.

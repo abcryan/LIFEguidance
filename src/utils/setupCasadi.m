@@ -1,7 +1,8 @@
 function setupCasadi()
 %SETUPCASADI Add CasADi to the path, downloading it into external/ if missing.
 version = '3.8.1';
-target = fullfile(fileparts(mfilename('fullpath')), 'external', 'casadi');
+root = fileparts(fileparts(fileparts(mfilename('fullpath'))));   % src/utils -> project root
+target = fullfile(root, 'external', 'casadi');
 
 if ~isfolder(fullfile(target, '+casadi'))
     assets = containers.Map({'maca64', 'maci64', 'glnxa64', 'win64'}, ...

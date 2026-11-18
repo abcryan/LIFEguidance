@@ -1,9 +1,11 @@
-function [F, M] = runProblem4(p, ref, resultsDir)
+function [F, M] = runProblem4(p, ref, resultsDir, name)
 %RUNPROBLEM4 Problem 4 in main.m: loads the sweep of fleetSweep.m
 %   (results/problem4/sweep.mat, which must match the current settings),
 %   solves the joint NLP, checks and validates it (solveFleet), and
 %   writes the fleet outputs and figures to results/problem4/.
-outDir = fullfile(resultsDir, 'problem4');
+%   runProblem4(..., name) uses results/<name>/ instead (problem4Targets.m).
+if nargin < 4, name = 'problem4'; end
+outDir = fullfile(resultsDir, name);
 f = fullfile(outDir, 'sweep.mat');
 if ~isfile(f)
     error('LIFE:noSweep', 'Problem 4 needs the sweep: run fleetSweep.m first (%s missing).', f);

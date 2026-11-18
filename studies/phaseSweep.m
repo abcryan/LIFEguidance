@@ -4,7 +4,7 @@
 %  main.m should match the sweep minimum (J3 <= J2 must hold). The
 %  prescribed arrival phase of Problem 2 is solved as well: Problem 3
 %  with phiTau = phi0 + rate*tau is Problem 2 (reduction check).
-projectRoot = fileparts(mfilename('fullpath'));
+projectRoot = fileparts(fileparts(mfilename('fullpath')));   % studies/ -> project root
 addpath(projectRoot);
 addpath(genpath(fullfile(projectRoot, 'src')));
 setupCasadi();

@@ -8,7 +8,7 @@
 %  separately. Validation, outputs and figures as for Problems 1-3, in
 %  results/problem3_combiner/, plus a comparison with collector 1's
 %  Problem 3 (results/problem3, run main.m first).
-projectRoot = fileparts(mfilename('fullpath'));
+projectRoot = fileparts(fileparts(mfilename('fullpath')));   % studies/ -> project root
 addpath(projectRoot);
 addpath(genpath(fullfile(projectRoot, 'src')));
 setupCasadi();

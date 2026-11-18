@@ -1,6 +1,7 @@
 %% Render the comparison animation of Problems 1-3 and the Problem 4 fleet
 %  animation from a saved run of main.m (and, optionally, the two
-%  per-problem animations of Sec. 5.3)
+%  per-problem animations of Sec. 5.3, and the videos of the studies in
+%  studies/: the combiner's Problem 3 and Problem 4 for other targets)
 projectRoot = fileparts(mfilename('fullpath'));
 addpath(genpath(fullfile(projectRoot, 'src')));
 
@@ -12,6 +13,8 @@ video.quality    = 100;                % MPEG-4 quality, 0-100
 video.perProblem = false;              % also the SER and formation videos per problem
 video.compare    = true;               % Problems 1-3: video_comparison.mp4
 video.fleet      = true;               % Problem 4: problem4/video_fleet.mp4
+video.combiner   = false;              % studies/problem3Combiner: SER and formation videos
+video.targets    = false;              % studies/problem4Targets: video_fleet.mp4 per target
 
 resultsDir = fullfile(projectRoot, 'results');
 pNow = lifeParameters();
@@ -53,5 +56,30 @@ if video.perProblem
         dirK = fullfile(resultsDir, sprintf('problem%d', R{k}.problem));
         videoSER(R{k}, R{k}.p, sk, fullfile(dirK, 'video_SER.mp4'));
         videoFormation(R{k}, R{k}.p, sk, fullfile(dirK, 'video_formation.mp4'));
+    end
+end
+
+% Studies (studies/): combiner alone in Problem 3, Problem 4 for other targets
+fc = fullfile(resultsDir, 'problem3_combiner', 'solution.mat');
+if video.combiner && isfile(fc)
+    d = load(fc, 'res', 'p');
+    d.p.viz = pNow.viz; d.res.p = d.p;
+    sk = videoSchedule(d.res, 'fps', video.fps, 'duration', video.duration);
+    sk.height = video.height; sk.quality = video.quality;
+    outDir = fileparts(fc);
+    videoSER(d.res, d.p, sk, fullfile(outDir, 'video_SER.mp4'));
+    videoFormation(d.res, d.p, sk, fullfile(outDir, 'video_formation.mp4'));
+    fprintf('Videos written to %s\n', outDir);
+end
+if video.targets
+    for dt = dir(fullfile(resultsDir, 'problem4_target*'))'
+        ft = fullfile(dt.folder, dt.name, 'solution.mat');
+        if ~dt.isdir || ~isfile(ft), continue, end
+        d = load(ft, 'fleet');
+        for i = 1:numel(d.fleet.res), d.fleet.res{i}.p.viz = pNow.viz; end
+        sk = videoSchedule(d.fleet.res{1}, 'fps', video.fps, 'duration', video.duration);
+        sk.height = video.height; sk.quality = video.quality;
+        videoFleet(d.fleet, p, sk, fullfile(dt.folder, dt.name, 'video_fleet.mp4'));
+        fprintf('Video written to %s\n', fullfile(dt.folder, dt.name));
     end
 end
