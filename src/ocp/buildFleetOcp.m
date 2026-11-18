@@ -1,4 +1,4 @@
-function ocp = buildFleetOcp(p, ref, ipoptExtra)
+function ocp = buildFleetOcp(p, ref, ipoptExtra, collision)
 %BUILDFLEETOCP Problem 4, eqs. (57)-(64): the five spacecraft of the fleet
 %   on a common normalized mesh, coupled only through the shared arrival
 %   time tau and arrival phase phiTau. Each block is the Problem 3 block of
@@ -11,8 +11,19 @@ function ocp = buildFleetOcp(p, ref, ipoptExtra)
 %   into the full w (for packW, unpackW). ocp.dgTdphi(w) gives the
 %   derivative of the terminal rows by phiTau/pi (sensitivities).
 %   ipoptExtra: IPOPT options added to p.ocp.ipopt (e.g. warm start).
+%   collision = true (Problem 5, eq. (67)): appends, for all ten pairs (or
+%   only the pairs listed, collision = k x 2 matrix) and every
+%   collocation point, the rows g = |r_i - r_j|^2/dmin^2 of the
+%   pointing-frame positions (p.collision.dmin as fixed scale). Their lower
+%   bound is set per solve (setCollision), so one solver serves every
+%   dmin; lbg = 0 is Problem 4. No new variables: w is the Problem 4 layout.
+%   ocp.iCol (rows), ocp.colPair (pair index per row), ocp.colTime
+%   (normalized time per row), ocp.pairs (the constrained pairs, k x 2).
+%   Without it the NLP is the
+%   Problem 4 NLP, unchanged.
 import casadi.*
-if nargin < 3, ipoptExtra = struct(); end
+if nargin < 3 || isempty(ipoptExtra), ipoptExtra = struct(); end
+if nargin < 4, collision = false; end
 nS = numel(p.fleet.point);
 pk = arrayfun(@(i) spacecraftParams(p, i), 1:nS, 'UniformOutput', false);
 c = ocpFunctions(p, ref, true);
@@ -49,12 +60,39 @@ for i = 1:nS
     lbx(v.ix.U) = 0; ubx(v.ix.U) = 1;    % (61)
 end
 g = vertcat(g{:});
+lbg = vertcat(lbg{:}); ubg = vertcat(ubg{:});
+% Collision avoidance (67): squared separations of the position states
+% (rows 8:10 of XC, scaled by S(8:10)) at every collocation point
+pairs = nchoosek(1:nS, 2);
+if ~islogical(collision), pairs = collision; collision = ~isempty(pairs); end
+ocp.pairs = pairs; ocp.iCol = []; ocp.colPair = []; ocp.colTime = [];
+if collision
+    nP = size(pairs, 1); nC = N*d;
+    sc = c.S(8)/p.collision.dmin;        % positions in units of dmin
+    pos = cell(1, nS);
+    for i = 1:nS
+        XCi = reshape(w(view(i).ix.XC), nx, nC);
+        pos{i} = XCi(8:10, :);
+    end
+    gc = cell(nP, 1);
+    for k = 1:nP
+        dr = pos{pairs(k,1)} - pos{pairs(k,2)};
+        gc{k} = sc^2*sum1(dr.^2)';
+    end
+    ocp.iCol = nG + (1:nP*nC)';
+    ocp.colPair = kron((1:nP)', ones(nC, 1));
+    ocp.colTime = repmat(c.sColl(:), nP, 1);
+    g = [g; vertcat(gc{:})];
+    lbg = [lbg; zeros(nP*nC, 1)]; ubg = [ubg; inf(nP*nC, 1)];
+    nG = nG + nP*nC;
+end
 % (63) with the numerical lower bound, (64)
 lbx(1) = p.tauMin/p.tf; ubx(1) = 1;
 lbx(2) = -1; ubx(2) = 1;
 
 opts = struct('expand', true, 'print_time', false, 'ipopt', p.ocp.ipopt);
 opts.ipopt.max_wall_time = p.ocp.p4MaxWallTime;
+if collision, opts.ipopt.max_wall_time = p.ocp.p5MaxWallTime; end
 for f = fieldnames(ipoptExtra)'
     opts.ipopt.(f{1}) = ipoptExtra.(f{1});
 end
@@ -69,5 +107,6 @@ ocp.pk = pk;
 ocp.nS = nS; ocp.nB = nB; ocp.nW = nW; ocp.nG = nG;
 ocp.N = N; ocp.d = d; ocp.nx = nx; ocp.nu = nu; ocp.S = c.S;
 ocp.lbx = lbx; ocp.ubx = ubx;
-ocp.lbg = vertcat(lbg{:}); ocp.ubg = vertcat(ubg{:});
+ocp.lbg = lbg; ocp.ubg = ubg;
+ocp.collision = collision; ocp.colScale = p.collision.dmin;
 end

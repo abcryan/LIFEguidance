@@ -147,6 +147,28 @@ p.ocp.p4.nJointStarts = 3;              % joint NLP from the best grid points,
 p.ocp.p4.fdStepDeg = 0.25;
 % CHOICE: wall-time cap per joint solve [s] (measured 91-220 s)
 p.ocp.p4MaxWallTime = 900;
+% Problem 5 (Secs. 4.6, 5.1, 5.2): collision avoidance, |r_i - r_j| >= dmin
+% for all ten pairs at every collocation point. dmin covers both envelopes
+% (outer radius 3.8 m) with ~12 m margin; the NLP imposes dmin + margin
+% (relative speeds <= 0.2 m/s, <= 11 s between collocation points). The
+% sweep J5(dmin) is continued from the 20 m solution; 4 m lies below the
+% Problem 4 minimum separation (5.34 m), where J5 must equal J4*. dJ5/ddmin
+% from the multipliers is checked by central differences at dmin +- fdStep.
+% nearLabel: in the video, pairs closer than dmin + nearLabel are joined.
+% CHOICE: nWorkers > 0 runs the starts and the sweep chains in parallel,
+% each worker with its own compiled NLP; 0 runs everything serially in the
+% client. Measured at N = 400, d = 5: the build takes ~4 GB, but a solve
+% (IPOPT with MUMPS) ~15 GB per process, so 3 workers (~45 GB) swapped a
+% 24 GB machine to its limit. Parallel needs ~15 GB of free memory per worker.
+p.collision = struct('dmin', 20, 'margin', 0.5, 'sweep', [4 5 10 15 25 30], ...
+                     'fdStep', 0.5, 'nearLabel', 5, 'nWorkers', 0, 'pairs', 'crossing');
+% CHOICE (for now, the document imposes all ten pairs): pairs = "crossing"
+% imposes (67) only on the pairs that come closer than dmin + margin in the
+% Problem 4 solution, (1,3) and (2,4); the other eight (>= 128 m apart)
+% are verified exactly on the propagated trajectories. "all": all ten.
+% CHOICE: wall-time cap per Problem 5 joint solve [s] (infeasible starts
+% go through IPOPT's restoration phase; capped starts count as failed)
+p.ocp.p5MaxWallTime = 1800;
 % Parallel pool for the Problem 4 sweep and validation (process workers)
 p.par.nWorkers = 8;
 % A burn is a run of intervals with sum_k T_k above this (CHOICE) [N]

@@ -49,13 +49,7 @@ for i = 1:nS, p3(i).phiTau_deg = rad2deg(S.p3(i).phiTau); end
 writeText(fullfile(outDir, 'p3_per_spacecraft.json'), jsonencode(p3, 'PrettyPrint', true));
 
 % Per spacecraft: the single-spacecraft outputs and figures
-res = F.res;
-parfor i = 1:nS
-    d = fullfile(outDir, sprintf('sc%d', i));
-    saveResults(res{i}, ref, res{i}.p, d);
-    figs = plotResults(res{i}, res{i}.p, d);
-    structfun(@close, figs);
-end
+saveSpacecraft(F.res, ref, outDir);
 end
 
 function writeText(file, txt)

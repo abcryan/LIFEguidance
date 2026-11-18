@@ -118,6 +118,15 @@ initial guess (Sec. 5.2) and there is no warm start, so the solutions compare
 - **Why the joint NLP starts with `continuationOptions`** (measured at N = 400, d = 5). IPOPT's default initialization pushes every thruster 1e-2 off its bound and ends in worse local optima: 1405.85 and 1423.17 N s from grid points at 1393.29 and 1386.08 N s. A primal-dual warm start keeps the local optima but barely moves the phase; the joint solve did not converge within 900 s. Refining the phase on the separable subproblems first (secant steps on Σ dJ_i/dφ) did not converge either: within 0.1° the subproblems change local optimum under the default initialization, and the warm start needs 140–260 iterations even for such steps. With a primal start, small bound push and small μ_init, all subproblems stepped by 0.1° and 2° stayed in their local optimum (6–43 s), and the joint NLP converges in 91–302 iterations (1.5–5 min).
 - **Checks**: Σ J*_3,i ≤ J4\*; J_4,i ≥ J*_3,i; every J*_3,i ≤ that spacecraft's sweep minimum; J4\* ≤ the sweep minimum and ≤ Σ J_i at Problem 2's phase; φ* interior; Σ dJ_i/dφ ≈ 0; the finite differences agree (within 10% of max |dJ_i/dφ|); `Solve_Succeeded`; all five spacecraft accepted. The free-space expectations of Sec. 5.1 (τ* = t_f, |φ*| ≤ 15°, Π4 < 1%, combiner > 50%, diagonal pairs ~36° apart) are reported, not enforced. The distances between spacecraft are reported (not constrained, Assumption 5).
 
+## Problem 5: Problem 4 + collision avoidance
+
+- **Constraint** (67): |r*_i − r*_j| ≥ d_min = 20 m for all ten pairs, imposed in the NLP as |r_i − r_j|²/d_min² ≥ ((d_min + 0.5 m)/d_min)² at all 5N = 2000 collocation points (`p.collision`). The two formations satisfy it (smallest separation 25 m initially, 80 m at arrival; `checkCollisionFeasibility`). In the Problem 4 solution only the crossing pairs (1,3) and (2,4) violate it (5.34 m and 5.87 m), all other pairs stay ≥ 128 m apart.
+- **NLP** (`buildFleetOcp(p, ref, ipoptExtra, true)`): the Problem 4 NLP plus 20 000 rows, no new variables (196 067 variables, 186 125 constraints; built in 266 s, ~4 GB). d_min enters only through the lower bound of these rows (`setCollision`), so one compiled solver serves every d_min; with the bound 0 it is Problem 4. Without the flag the NLP is Problem 4, unchanged (tested).
+- **Solve** (`solveProblem5`, `problem5Solve`): primal starts with the Problem 4 IPOPT settings (`continuationOptions`), τ and φτ free: (a) the Problem 4 optimum; (b–e) the Problem 4 optimum with the two collectors of each crossing pair displaced in opposite directions along ±z_* by (d_min/2) sin(πν), all four combinations of passing sides. The best `Solve_Succeeded` is kept (fallback: continuation d_min = 5, 10, 15, 20 m from Problem 4). Then the sweep J5(d_min) on that branch (down 15 → 4 m, up 25 → 30 m), central differences at 20 ± 0.5 m, and one solve at 4 m from the Problem 4 optimum.
+- **Parallel** (`p.collision.nWorkers = 3`): every worker compiles its own NLP (~4 GB each, so 3 workers on 24 GB) and the starts and sweep chains run side by side; `nWorkers = 0` runs everything serially in the client (one build). Same solves either way.
+- **Sensitivity** dJ5/dd_min = −J_scale Σ λ_k ∂lbg_k/∂d_min from the collision multipliers (envelope theorem), checked against the central differences (within 10%, as in Problem 4).
+- **Verification** (§5.2, steps i–iv): (i) the formations satisfy d_min; (ii) every sampled separation ≥ d_min + 0.5 m, and every collision row with a multiplier above 1e-4 of the largest lies within 1 mm of the bound (the remaining rows carry only IPOPT's barrier residue, ≥ 4 orders smaller, measured); (iii) every local minimum of every d_ij(t) on the forward-propagated trajectories, located exactly (`separationMinima`: sign changes of d/dt d² on the output grid, the control interval integrated again with `ode89`, root of 2Δr·Δv on `deval`), smallest ≥ 20 m; (iv) J4\* ≤ J5\*, J5(d_min) non-decreasing, J5(4 m) = J4\* (tolerance 1e-4 J4\* = 0.14 N s, the re-solve scatter of Problem 4), and the solve at 4 m from the Problem 4 optimum = J4\*. Every spacecraft is validated with the unchanged gates (`validateFleet`).
+
 ## Virtual formations and initial condition
 
 Both formations are built the same way, from a spec in `lifeParameters.m` (`p.target`, `p.init`):
@@ -187,6 +196,25 @@ All gates are 1e-2 m, 1e-5 m/s, 1e-4 rad and 1e-7 s⁻¹. All checks of Sec. 4.5
 - **Checks**: all pass – Σ J*_3,i ≤ J4\*, J_4,i ≥ J*_3,i, J*_3,i ≤ own sweep minimum, J4\* ≤ sweep minimum and ≤ Problem 2's phase bound, φ* interior, sensitivities sum to zero, finite differences agree, `Solve_Succeeded`, all five accepted (arrival ‖Δr‖ ≤ 1.9e-5 m, ξ ≤ 4.7e-7 rad, Sun violation 0.000°).
 - **Expectations of Sec. 5.1** (free-space estimate, reported): τ\* = t_f yes; |φ\*| ≤ 15° yes; combiner > 50% yes; Π4 < 1% no (1.48%); the diagonal pairs' individual optima lie 21.9° apart (estimate ~36°).
 - **Distances** (not constrained): minimum 5.3 m between collectors 1 and 3 at t = 4054 s.
+
+### Problem 5 (crossing pairs constrained, `p.collision.pairs = "crossing"`)
+
+- **Solve** (serial, 125 min in all): NLP built in 265 s (4 000 collision rows for (1,3) and (2,4), 170 125 constraints). All five starts `Solve_Succeeded` (632–1 427 iterations, 9–20 min each, ~0.85 s per iteration, ~15 GB):
+
+  | Start | J5 (N s) | φτ* |
+  |---|---|---|
+  | Problem 4 optimum | 1404.27 | −5.36° |
+  | displaced (1,3) +, (2,4) + | **1400.94** | −7.74° |
+  | displaced (1,3) +, (2,4) − | 1401.01 | −7.94° |
+  | displaced (1,3) −, (2,4) + | 1400.95 | −7.68° |
+  | displaced (1,3) −, (2,4) − | 1401.04 | −7.69° |
+
+- **J5\* = 1400.94 N s, Π5 = 14.80 N s (1.07% of J4\*)**, τ* = t_f, φτ* = −7.74° (−2.98° from Problem 4). The cost falls on collectors 3 (+6.63 N s) and 4 (+7.82 N s); 1 +0.65, 2 −0.30, the combiner unchanged. The constraint is active only for the crossing pairs, (2,4) on [3708, 3898] s and (1,3) on [5349, 5510] s; smallest separation on the propagated trajectories 20.500 m (exact, all ten pairs). All five spacecraft pass the unchanged gates; Sun band kept (max. violation 0.0000°).
+- **dJ5/dd_min** = 1.510 N s/m from the multipliers, 1.494 N s/m from central differences at 20 ± 0.5 m. Sweep J5(d_min): 1383.70 (4 m), 1383.74 (5 m), 1387.53 (10 m), 1393.73 (15 m), 1400.94 N s (20 m).
+- **Failed checks** (reported, thresholds unchanged):
+  - *Sweep at 25 and 30 m*: `Infeasible_Problem_Detected`, correctly: the crossing collectors start 25 m apart, so d_min + 0.5 m ≥ 25 m is violated at the first collocation point (t ≈ 2 s). The useful range is d_min < 24.5 m.
+  - *J5(4 m) = J4\**: the chain from the 20 m solution reaches 1383.70 N s and the solve from the Problem 4 optimum 1385.67 N s, both below J4\* = 1386.14 N s with the collision rows inactive. The Problem 4 solution is not a strict local minimum; slightly better Problem 4 optima exist nearby (against 1383.70 N s, Π5 = 17.24 N s).
+  - *Multipliers only at the bound*: rows with a multiplier above 1e-4 of the largest lie up to 3 mm from the bound (1 mm required). At N = 400 the multipliers fall off smoothly at the ends of an active arc (λ·slack ≈ 1e-9, IPOPT's final barrier parameter), unlike the clean gap at N = 10 on which the 1e-4 threshold was chosen.
 
 ### Check of the pointing-frame formulation
 
@@ -267,6 +295,10 @@ with N = 200, all checks pass except the terminal attitude check, which gives
     - `fleet_phase_sweep.png`: (a) the stacked J_i(t_f, φ) with J4(φ), the joint starts and optimum, every φ*_3,i and Problem 2's phase; (b) J_i − min J_i per spacecraft with the path class and the multiplier slopes; (c) dJ_i/dφτ at φ* from the multipliers and from the finite differences.
     - `fleet_impulse.png` (J_4,i vs J*_3,i, Π4, cumulative impulse), `fleet_trajectories.png` (3D in the target formation frame and close-ups), `fleet_tracking.png` (tracking-error norms with the gates), `fleet_sun.png` (anti-Sun angle and sky plot), `fleet_thrust.png` (thruster heat strips), `fleet_distance.png` (the 10 pair distances).
   - `video_fleet.mp4` (`makeVideo`): SER-parallel 3D view with all five spacecraft (×12, plumes), the formation-frame view, a 5×20 thruster grid and strips of |r^f_pi|, the anti-Sun angle and the cumulative impulse.
+- **Problem 5** (`results/problem5/`)
+  - `solution.mat` (`fleet`: per-spacecraft results, starts, d_min sweep, finite differences, collision multipliers; `metrics`; `p`), `summary.json` (J5\*, Π5, Δτ\*, Δφτ\*, active pairs and intervals, all separation minima, checks), `starts.json`, `dmin_sweep.json`, `sc1/` … `sc5/`, and `fleet_trajectories/tracking/sun/thrust.png` as for Problem 4.
+  - `p5_separation.png` (crossing pairs, Problem 5 solid and Problem 4 dashed, d_min, NLP bound, active intervals; all ten pairs on a log scale), `p5_passes.png` (relative motion of each crossing pair with the 20 m keep-out sphere, Problem 4 piercing it), `p5_collectors.png` (collector paths in O\*, top and side view, 10 m circles at the closest approaches), `p5_impulse.png` (per spacecraft, Problems 4 and 5), `p5_total_cost.png` (total fleet impulse of Problems 4 and 5 with Π5 on a zoomed axis, and the change per spacecraft that sums to Π5), `p5_dmin_sweep.png` (J5(d_min), multiplier tangent, central differences, infeasible distances).
+  - `video_collision.mp4` (`makeVideo`, `video.p5`): Problem 4 and Problem 5 side by side in O\*, same camera and time, 10 m spheres to scale (they touch at d_min) and z^i; overlapping spheres in Problem 4 turn red ("VIOLATION"), pairs at the bound in Problem 5 are joined by a red line; under each view the anti-Sun angle of all five spacecraft in the field of regard; below, the minimum separation of both problems. `video_fleet.mp4`: the fleet video of Problem 5.
 - **Per problem** (`results/problemK/`): the figures and data below. `sun_angle.png` shows θ_i against the band, with the intervals outside it and the active points. `summary.json` holds a `sun` block and the arrival phase. Problem 3 also writes `multistart.json`, and `phaseSweep` adds `phase_sweep.json` and `.png`. The two earlier videos per problem are rendered with `video.perProblem = true` in `makeVideo.m`; each uses its own formation phase.
 - **Figures** (written by `main` and left open in MATLAB; saved as PNG)
   - `tracking_errors.png`: ξ, ω^f_fi, r^f_pi, ṙ^f_pi (target-relative, formation frame), with tolerance bands and magnified arrival views.

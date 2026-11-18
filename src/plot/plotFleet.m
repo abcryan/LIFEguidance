@@ -1,4 +1,4 @@
-function figs = plotFleet(F, M, S, p, outDir)
+function figs = plotFleet(F, M, S, p, outDir, names)
 %PLOTFLEET Problem 4 figures (Sec. 5.3), one colour per spacecraft
 %   (plotStyle s.sc), saved as PNG to outDir and left open:
 %   fleet_phase_sweep   J_i(tf, phi) stacked, J4(phi), phi*, phi*_3,i,
@@ -10,6 +10,9 @@ function figs = plotFleet(F, M, S, p, outDir)
 %   fleet_sun           anti-Sun angle and sky plot of all spacecraft
 %   fleet_thrust        T_ik/Tmax of every spacecraft over time
 %   fleet_distance      distances between all pairs (not constrained)
+%   names (optional): the subset to draw (Problem 5 draws the four that
+%   need neither the sweep nor Problem 4's metrics); titles carry
+%   F.problem (default 4).
 list = {
     'fleet_phase_sweep',  @() sweepFig(F, M, S, p)
     'fleet_impulse',      @() impulseFig(F, M, p)
@@ -19,10 +22,15 @@ list = {
     'fleet_thrust',       @() thrustFig(F, p)
     'fleet_distance',     @() distanceFig(M, p)
     };
+if nargin >= 6, list = list(ismember(list(:, 1), names), :); end
 for k = 1:size(list, 1)
     figs.(list{k, 1}) = list{k, 2}();
     exportgraphics(figs.(list{k, 1}), fullfile(outDir, [list{k, 1} '.png']), 'Resolution', 200);
 end
+end
+
+function n = problemNo(F)
+n = 4; if isfield(F, 'problem'), n = F.problem; end
 end
 
 function lbl = scLabel(p, i)
@@ -147,9 +155,9 @@ s = plotStyle(); nS = numel(F.res);
 fig = newFigure('fleetTraj', [50 50 1500 850]);
 tl = tiledlayout(fig, 2, 5, 'TileSpacing', 'compact', 'Padding', 'compact');
 pk = F.res{1}.p;
-title(tl, sprintf(['Problem 4 paths in the target formation frame O^f (\\phi_\\tau^* = %.2f\\circ): ' ...
+title(tl, sprintf(['Problem %d paths in the target formation frame O^f (\\phi_\\tau^* = %.2f\\circ): ' ...
     'target pyramid red, initial pyramid at t = 0 grey; arrows: z^i every 40 min'], ...
-    rad2deg(F.res{1}.sol.phiTau)));
+    problemNo(F), rad2deg(F.res{1}.sol.phiTau)));
 ax = nexttile(tl, [2 2]); hold(ax, 'on'); grid(ax, 'on');
 drawFormation(ax, [pk.viz.collectors, pk.viz.combiner]);
 drawFormation(ax, initialFormationPoints(pk), [0.55 0.55 0.55]);
@@ -211,7 +219,7 @@ s = plotStyle(); nS = numel(F.res);
 fig = newFigure('fleetTracking');
 tau = F.res{1}.sol.tau;
 tl = tiledlayout(fig, 4, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
-title(tl, 'Problem 4 target-relative errors (independent propagation), norms per spacecraft');
+title(tl, sprintf('Problem %d target-relative errors (independent propagation), norms per spacecraft', problemNo(F)));
 spec = {@(r) r.thetaAcos, '\xi_i (rad)', p.gate.theta
         @(r) vecnorm(r.prop.x(5:7,:)), '|\omega^f_{fi}| (1/s)', p.gate.w
         @(r) vecnorm(r.prop.x(8:10,:)), '|r^f_{pi}| (m)', p.gate.r
@@ -245,7 +253,7 @@ function fig = sunFig(F, M, p)
 s = plotStyle(); nS = numel(F.res);
 fig = newFigure('fleetSun', [50 50 1500 650]);
 tl = tiledlayout(fig, 1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
-title(tl, 'Problem 4 Sun-angle constraint (48) along the propagated trajectories');
+title(tl, sprintf('Problem %d Sun-angle constraint (48) along the propagated trajectories', problemNo(F)));
 ax = nexttile(tl, [1 2]); hold(ax, 'on'); grid(ax, 'on');
 tau = M.tau;
 sunBands(ax, p, [0 tau], struct('t0', {}, 't1', {}), s);
@@ -279,8 +287,8 @@ s = plotStyle(); nS = numel(F.res);
 fig = newFigure('fleetThrust', [50 50 1400 1000]);
 tl = tiledlayout(fig, nS, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
 uMax = max(cellfun(@(r) max(r.sol.U(:)), F.res));
-title(tl, sprintf(['Problem 4 firing sequences T_{ik}/T_{max} (rows: thrusters by pod; colour scale to ' ...
-    'the fleet peak %.2f) and total thrust \\Sigma_k T_{ik}'], uMax));
+title(tl, sprintf(['Problem %d firing sequences T_{ik}/T_{max} (rows: thrusters by pod; colour scale to ' ...
+    'the fleet peak %.2f) and total thrust \\Sigma_k T_{ik}'], problemNo(F), uMax));
 for i = 1:nS
     sol = F.res{i}.sol;
     ax = nexttile(tl);

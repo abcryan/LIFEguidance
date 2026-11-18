@@ -1,4 +1,4 @@
-%% Guidance problems 1-4 at L2
+%% Guidance problems 1-5 at L2
 %  Updated LIFE guidance problem, Secs. 4-5: minimum-impulse acquisition of
 %  a point on a rotating virtual formation near Sun-Earth L2 with 20 fixed
 %  throttleable thrusters. Problem 1: fixed phase, no path constraint.
@@ -7,7 +7,8 @@
 %  the non-spinning pointing frame (Sec. 4.1), where the phase enters only
 %  the terminal condition (39). Problem 4: the five spacecraft of the
 %  formation with a shared arrival time and phase, from the sweep of
-%  fleetSweep.m (run it first). Direct Radau collocation
+%  fleetSweep.m (run it first). Problem 5: Problem 4 with collision
+%  avoidance between all spacecraft, from the Problem 4 solution. Direct Radau collocation
 %  (CasADi/IPOPT) on one uniform mesh, independent forward propagation,
 %  Sec. 5.3 figures per problem and a comparison.
 %
@@ -15,7 +16,7 @@
 %  The video is rendered from the saved results by makeVideo.m, the
 %  Problem 3 phase sweep by phaseSweep.m.
 
-problems = [1 2 3 4];                   % guidance problems to solve
+problems = [1 2 3 4 5];                 % guidance problems to solve
 
 projectRoot = fileparts(mfilename('fullpath'));
 addpath(projectRoot);
@@ -29,6 +30,10 @@ for k = problems
     if k >= 2, checkSunFeasibility(p, ref); end
     if k == 4
         runProblem4(p, ref, resultsDir);
+        continue
+    end
+    if k == 5
+        runProblem5(p, ref, resultsDir);
         continue
     end
     ocp = buildOcp(p, ref, k);
@@ -51,5 +56,5 @@ for k = problems
 end
 compareProblems(resultsDir, p);
 
-% Close the pool of Problem 4 explicitly (MATLAB crashed shutting it down at exit)
+% Close the pool of Problems 4 and 5 explicitly (MATLAB crashed shutting it down at exit)
 delete(gcp('nocreate'));

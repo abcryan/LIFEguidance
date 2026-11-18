@@ -8,7 +8,9 @@ function cmp = compareProblems(resultsDir, p)
 %   (phaseSweep.m) is included when present. Problem 4 enters the table
 %   and the figures through collector 1, the spacecraft of Problems 1-3
 %   (at the shared tau* and phiTau*), and adds a fleet block: the total
-%   and per-spacecraft impulse, Pi4 and the fleet checks.
+%   and per-spacecraft impulse, Pi4 and the fleet checks. Problem 5 enters
+%   the same way (collector 1) with a block: J5*, Pi5, minimum separation
+%   and its checks.
 R = {};
 for k = 1:3
     f = fullfile(resultsDir, sprintf('problem%d', k), 'solution.mat');
@@ -24,6 +26,13 @@ if isfile(f4)
     d = load(f4, 'fleet', 'metrics', 'sweep');
     R{end + 1} = d.fleet.res{1};        % collector 1, with its own p
     fleet = d;
+end
+f5 = fullfile(resultsDir, 'problem5', 'solution.mat');
+fleet5 = [];
+if isfile(f5)
+    d5 = load(f5, 'fleet', 'metrics');
+    R{end + 1} = d5.fleet.res{1};       % collector 1 of the collision-free fleet
+    fleet5 = d5;
 end
 if numel(R) < 2
     fprintf('Comparison skipped: fewer than two problems in %s\n', resultsDir);
@@ -43,6 +52,9 @@ for i = 1:numel(R)
     if isfield(r.info, 'multiStartTime'), c(i).total_solve_time_s = r.info.multiStartTime; end
     if r.problem == 4                   % joint starts and the sweep
         c(i).total_solve_time_s = fleet.fleet.jointTime + fleet.sweep.wallTime;
+    end
+    if r.problem == 5                   % all starts at dmin
+        c(i).total_solve_time_s = sum([fleet5.fleet.starts.time_s]);
     end
     c(i).tau_s = r.sol.tau;
     c(i).tau_at_upper_bound = r.info.tauAtUpper;
@@ -107,19 +119,33 @@ if any(P == 4)
         'combiner_share', M.share(5), 'min_distance_m', M.dist.min, ...
         'sweep_time_s', fleet.sweep.wallTime, 'joint_time_s', fleet.fleet.jointTime);
 end
+cmp.fleet5 = [];
+if any(P == 5)
+    M5 = fleet5.metrics;
+    fn = fieldnames(M5.checks);
+    for k = 1:numel(fn)
+        cmp.checks.(['fleet5_' fn{k}]) = M5.checks.(fn{k});
+    end
+    cmp.fleet5 = struct('J5_Ns', M5.J5, 'propellant_kg', M5.dm, 'tau_s', M5.tau, ...
+        'phi_tau_deg', rad2deg(M5.phiTau), 'J_per_spacecraft_Ns', M5.Ji, 'Pi5_Ns', M5.Pi5, ...
+        'Pi5_relative', M5.Pi5rel, 'dmin_m', fleet5.fleet.res{1}.p.collision.dmin, ...
+        'min_separation_m', M5.minSep, 'active_pairs', M5.activePairs, ...
+        'start_time_s', sum([fleet5.fleet.starts.time_s]));
+end
 
 writetable(cmp.table, fullfile(outDir, 'comparison.csv'));
 fid = fopen(fullfile(outDir, 'comparison.json'), 'w');
-fprintf(fid, '%s', jsonencode(struct('problems', c, 'fleet', cmp.fleet, 'checks', cmp.checks), ...
+fprintf(fid, '%s', jsonencode(struct('problems', c, 'fleet', cmp.fleet, 'fleet5', cmp.fleet5, ...
+    'checks', cmp.checks), ...
     'PrettyPrint', true));
 fclose(fid);
-printComparison(c, cmp.checks, cmp.fleet);
+printComparison(c, cmp.checks, cmp.fleet, cmp.fleet5);
 
 cmp.figs = plotComparison(R, p, outDir);
 end
 
-function printComparison(c, checks, fleet)
-fprintf('\n===== Comparison of the guidance problems (Problem 4: collector 1 of the fleet) =====\n');
+function printComparison(c, checks, fleet, fleet5)
+fprintf('\n===== Comparison of the guidance problems (Problems 4, 5: collector 1 of the fleet) =====\n');
 row = @(name, fmt, v) fprintf(['%-28s' repmat(sprintf('  %%%ss', fmt), 1, numel(v)) '\n'], name, v{:});
 str = @(f) arrayfun(f, c, 'UniformOutput', false);
 row('Problem', '16', str(@(x) sprintf('%d', x.problem)));
@@ -142,6 +168,12 @@ if ~isempty(fleet)
              'sum J*_3,i %.3f N s, Pi4 %.3f N s (%.2f%%), min. distance %.1f m\n'], fleet.J4_Ns, ...
             fleet.propellant_kg, mat2str(fleet.J_per_spacecraft_Ns, 6), 100*fleet.combiner_share, ...
             sum(fleet.J3_per_spacecraft_Ns), fleet.Pi4_Ns, 100*fleet.Pi4_relative, fleet.min_distance_m);
+end
+if ~isempty(fleet5)
+    fprintf(['Problem 5 fleet: J5* %.3f N s (dm %.4f kg), per spacecraft %s N s, Pi5 %.3f N s (%.2f%%), ' ...
+             'min. separation %.2f m (dmin %.0f m)\n'], fleet5.J5_Ns, fleet5.propellant_kg, ...
+            mat2str(fleet5.J_per_spacecraft_Ns, 6), fleet5.Pi5_Ns, 100*fleet5.Pi5_relative, ...
+            fleet5.min_separation_m, fleet5.dmin_m);
 end
 fn = fieldnames(checks);
 for k = 1:numel(fn)

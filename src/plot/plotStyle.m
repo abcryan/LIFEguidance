@@ -4,7 +4,7 @@ s.comp = [0.000 0.447 0.741; 0.850 0.325 0.098; 0.466 0.674 0.188];  % x y z
 s.pod  = [0.20 0.45 0.80; 0.85 0.35 0.10; 0.30 0.65 0.25; 0.60 0.30 0.70];
 s.band = [0.85 0.95 0.85];
 % Problems 1, 2 (and 3) in every comparison; Sun-angle violation shading
-s.prob = [0.90 0.45 0.05; 0.10 0.40 0.80; 0.45 0.20 0.60; 0.05 0.55 0.45];
+s.prob = [0.90 0.45 0.05; 0.10 0.40 0.80; 0.45 0.20 0.60; 0.05 0.55 0.45; 0.60 0.30 0.10];
 % Problem 4 spacecraft (document numbering): the diagonal pairs (1,4) and
 % (2,3), which prefer different arrival phases, share a hue (blue, orange;
 % dark/light), the combiner is purple

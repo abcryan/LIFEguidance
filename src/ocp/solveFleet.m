@@ -99,24 +99,7 @@ fprintf(['dJ_i/dphi [N s/rad]: multipliers %s; finite differences (quadratic fit
         mat2str(F.fd.dJdphi, 4), mat2str(F.fd.rms, 2), mat2str(F.fd.resolveOffset, 2));
 
 % 3. Validation of every spacecraft with the shared formation phase
-pk = cell(1, nS); inf_i = cell(1, nS);
-for i = 1:nS
-    pk{i} = spacecraftParams(p, i);
-    pk{i}.target.phase0 = sols{i}.phase0; pk{i}.phi0 = sols{i}.phase0;
-    in = rmfield(info, {'x', 'lamX', 'lamG'});
-    in.boundViolation = max([0; -sols{i}.U(:); sols{i}.U(:) - 1])*p.Tmax;
-    inf_i{i} = in;
-end
-tV = tic;
-res = cell(1, nS);
-parfor i = 1:nS
-    res{i} = validateSolution(sols{i}, inf_i{i}, ref, pk{i}, 4);
-end
-for i = 1:nS
-    res{i}.p = pk{i};
-    res{i}.sc = i;
-end
-F.validationTime = toc(tV);
+[res, F.validationTime] = validateFleet(sols, info, ref, p, 4);
 F.res = res;
 F.info = rmfield(info, {'x', 'lamX', 'lamG'});
 F.x = info.x;

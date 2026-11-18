@@ -2,12 +2,16 @@ classdef FleetOcpTest < matlab.unittest.TestCase
     %FLEETOCPTEST Problem 4 transcription: the joint NLP (buildFleetOcp) is
     %   the five single-spacecraft Problem 3 blocks (buildOcp, parametric,
     %   swapped with setSpacecraft) coupled only through tau and phiTau.
+    %   Problem 5: the collision rows (67) are the squared pairwise
+    %   separations, the Problem 4 rows are unchanged, and the
+    %   closest-approach search of the verification is exact.
     %   Coarse mesh (N = 10) for speed; no solve.
 
     properties
         p
         ref
         fleet
+        fleetCol
         single
     end
 
@@ -22,6 +26,7 @@ classdef FleetOcpTest < matlab.unittest.TestCase
             tc.p = p;
             tc.ref = propagateReference(p, p.tf);
             tc.fleet = buildFleetOcp(p, tc.ref);
+            tc.fleetCol = buildFleetOcp(p, tc.ref, [], true);
             tc.single = buildOcp(p, tc.ref, 3, true);
         end
     end
@@ -80,6 +85,79 @@ classdef FleetOcpTest < matlab.unittest.TestCase
             d = full(fo.dgTdphi(0.1*randn(fo.nW, 1)));
             dComb = d(ismember(fo.iTermAll, v.iTerm));
             tc.verifyEqual(dComb(4:12), zeros(9, 1), 'AbsTol', 1e-14);
+        end
+
+        function collisionRowsAreSquaredSeparations(tc)
+            % Problem 5 adds 10 pairs x N*d rows |r_i - r_j|^2/dscale^2 of
+            % the collocation positions; all other rows are Problem 4's
+            import casadi.*
+            fo = tc.fleet; fc = tc.fleetCol;
+            tc.verifyEmpty(fo.iCol);
+            nC = fc.N*fc.d; nP = size(fc.pairs, 1);
+            tc.verifyEqual(nP, 10);
+            tc.verifyEqual(numel(fc.iCol), nP*nC);
+            tc.verifyEqual(fc.nW, fo.nW);
+            tc.verifyEqual(fc.nG, fo.nG + nP*nC);
+            w = 0.5*randn(fc.nW, 1);
+            gC = Function('gC', {fc.nlp.x}, {fc.nlp.g});
+            g4F = Function('g4', {fo.nlp.x}, {fo.nlp.g});
+            g = full(gC(w)); g4 = full(g4F(w));
+            tc.verifyEqual(g(1:fo.nG), g4, 'AbsTol', 1e-12);
+            pos = cell(1, fc.nS);
+            for i = 1:fc.nS
+                XC = reshape(w(fc.view(i).ix.XC), fc.nx, []).*fc.S;
+                pos{i} = XC(8:10, :);
+            end
+            for k = 1:nP
+                dd = vecnorm(pos{fc.pairs(k,1)} - pos{fc.pairs(k,2)}).^2'/fc.colScale^2;
+                tc.verifyEqual(g(fc.iCol(fc.colPair == k)), dd, 'RelTol', 1e-12);
+            end
+            % the bound sets |r_i - r_j| >= dmin + margin, nothing else
+            f2 = setCollision(fc, 20, 0.5);
+            tc.verifyEqual(f2.lbg(fc.iCol), ((20.5)/fc.colScale)^2*ones(nP*nC, 1), 'RelTol', 1e-15);
+            tc.verifyEqual(f2.lbg(1:fo.nG), fo.lbg);
+            tc.verifyEqual(f2.ubg, fc.ubg);
+        end
+
+        function collisionRowsForListedPairsOnly(tc)
+            % pairs = "crossing": only the listed pairs, same rows as in
+            % the full version
+            import casadi.*
+            fc = tc.fleetCol;
+            fs = buildFleetOcp(tc.p, tc.ref, [], [1 3; 2 4]);
+            nC = fs.N*fs.d;
+            tc.verifyEqual(fs.pairs, [1 3; 2 4]);
+            tc.verifyEqual(numel(fs.iCol), 2*nC);
+            tc.verifyEqual(fs.nG, tc.fleet.nG + 2*nC);
+            w = 0.5*randn(fs.nW, 1);
+            gS = Function('gS', {fs.nlp.x}, {fs.nlp.g}); gC = Function('gC', {fc.nlp.x}, {fc.nlp.g});
+            g = full(gS(w)); gAll = full(gC(w));
+            for k = 1:2
+                kk = find(ismember(fc.pairs, fs.pairs(k,:), 'rows'));
+                tc.verifyEqual(g(fs.iCol(fs.colPair == k)), gAll(fc.iCol(fc.colPair == kk)), 'RelTol', 1e-14);
+            end
+        end
+
+        function closestApproachStraightLines(tc)
+            % two constant-velocity tracks: analytic minimum distance/time
+            r0 = [30; -12; 5]; v = [-0.04; 0.01; 0.002];
+            rv = @(t) [r0 + v*t; v];
+            tStar = -(r0'*v)/(v'*v);
+            dStar = norm(r0 + v*tStar);
+            [tc_, dc] = closestApproach(rv, 0, 2000);
+            tc.verifyEqual(tc_, tStar, 'AbsTol', 1e-6);
+            tc.verifyEqual(dc, dStar, 'AbsTol', 1e-9);
+            % receding at both ends: the minimum is at the start
+            [t0, d0] = closestApproach(rv, 1500, 2000);
+            tc.verifyEqual(t0, 1500); tc.verifyEqual(d0, norm(r0 + v*1500), 'AbsTol', 1e-12);
+        end
+
+        function formationsSatisfyDmin(tc)
+            % Sec. 5.1: smallest separation 25 m initially, 80 m at arrival
+            chk = checkCollisionFeasibility(tc.p);
+            tc.verifyEqual(chk.initialMin, 25, 'AbsTol', 1e-9);
+            tc.verifyEqual(chk.targetMin, 80, 'AbsTol', 1e-9);
+            tc.verifyTrue(chk.ok);
         end
 
         function setSpacecraftChangesOnlyParameters(tc)
